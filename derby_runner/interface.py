@@ -19,6 +19,7 @@ class MainWindow(PyQt5.QtWidgets.QMainWindow):
         self.setWindowTitle("Derby Runner")
 
         menuBar = self.menuBar()
+        menuBar.setStyleSheet("font: 18px ")
         parent_level = 0
         for x in menusTxt.values():
             for iKey, iValue in x.items():
