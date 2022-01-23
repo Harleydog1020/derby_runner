@@ -1,4 +1,11 @@
-from derby_runner import app
+import derby_runner
 
-if __name__=='__main__':
-    app.run()
+# ############################################################################
+# INITIALIZE GLOBAL VARIABLES
+# Set exitFlag = False
+# Set datachangeFlag = False
+# Set fileopenFlag = False
+# ############################################################################
+# READ YML
+#
+# WHILE exitFlag == False

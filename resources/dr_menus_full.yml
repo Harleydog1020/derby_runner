@@ -1,0 +1,36 @@
+filemenu:
+  menulabel: "&File"
+  entry1: "&New"
+  entry2: "&Open"
+  entry3: "&Duplicate"
+  entry4: "&Close"
+  entry5: "&Delete"
+
+stationsmenu:
+  menulabel: "&Stations"
+  entry1: "&New"
+  entry2: "&Edit"
+  entry3: "&Duplicate"
+  entry4: "&Delete"
+
+waypointsmenu:
+  menulabel: "&WayPoints"
+  entry1: "&New"
+  entry2: "&Edit"
+  entry3: "&Duplicate"
+  entry4: "&Delete"
+
+routesmenu:
+  menulabel: "&Routes"
+  entry1: "&New"
+  entry2: "&Edit"
+  entry3: "&Duplicate"
+  entry4: "&Delete"
+
+schedulesmenu:
+  menulabel: "&Schedules"
+  entry1: "&New"
+  entry2: "&Edit"
+  entry3: "&Duplicate"
+  entry4: "&Delete"
+
