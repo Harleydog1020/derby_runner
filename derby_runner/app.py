@@ -1,17 +1,21 @@
-# #############################################################################
-# #############################################################################
+import sys
+import PyQt5.QtGui     as Gui
+import PyQt5.QtWidgets as Wid
+import PyQt5.QtCore    as Cor
+import pandas
+
 import PyQt5
 import feather
 import pandas
 import yaml
-import sys
+
 from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QLineEdit, QFileDialog, QTableView
 from PyQt5.QtCore import QAbstractTableModel, Qt
 from PyQt5.QtGui import QIcon
-#
 
+data = [['Alex',10],['Bob',12],['Clarke',13]]
+df_stations = pandas.DataFrame(data,columns=['Name','Age'])
 
-# ### BEGIN MAINWINDOW CLASS ###################################################
 
 class pandasModel(QAbstractTableModel):
 
@@ -46,95 +50,75 @@ class pandasModel(QAbstractTableModel):
             return self._data.columns[col]
 
 
-class MainWindow(PyQt5.QtWidgets.QMainWindow):
+class Window(Wid.QMainWindow):
     def __init__(self):
-        super().__init__()
-        self.table = QTableView()
+        super(Window, self).__init__()
         self.title    = "Test"
-# TODO:        self.iconname = "D:/_Qt/img/py-qt.png"
-#        self.initWindow()
+        self.table = QTableView()
+        self.iconname = "D:/_Qt/img/py-qt.png"
 
+        menusTxt = self.ymlread("/home/brickyard314/PycharmProjects/derby_runner/resources/dr_menus.yml")
+        self.initWindow(menusTxt)
+
+# +++
         self.model = pandasModel(df_stations)
         self.table.setModel(self.model)
         self.setCentralWidget(self.table)
-        self.resize(1600, 1600)
-        self.initWindow()
+# +++
+    def newFileDialog(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getNewFileName(self, "QFileDialog.getNewFileName()", "",
+                                                  "All Files (*);;Text Files (*.txt)", options=options)
 
-        def initWindow(self):
-            self.setWindowTitle(self.title)
-            self.setGeometry(100, 100, 500, 300)
-            self.setWindowIcon(Gui.QIcon(self.iconname))
-            self.qtMenu()
+    def openFileDialog(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", "testText",
+                                                  "All Files (*);;Python Files (*.py)", options=options)
 
-        def ymlread(self):
-            global parent_str
-            mfile = open("../resources/dr_menus.yml", "r")
-            menusTxt: dict = yaml.safe_load(mfile)
-            mfile.close()
-#
-            parent_level = 0
-            for x in menusTxt.values():
-                for iKey, iValue in x.items():
-                    if iKey == "menulabel":
-                        parent_str = iValue.strip('&') + "Menu"
-                        exec("%s = %s" % (parent_str, "menuBar.addMenu(iValue)"))
-                    else:
-                        child_str = parent_str + ".addAction(\"" + iValue + "\")"
-                        exec("%s" % (child_str))
-                        child_str = parent_str + ".newAction.triggered.connect(self." + iValue.lower() + parent_str + ")"
-                        exec("%s" % (child_str))
+    def saveFileDialog(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()", "",
+                                                  "All Files (*);;Text Files (*.txt)", options=options)
+# +++
+    def ymlread(self, x: str):
+        global parent_str
+        mfile = open(x, "r")
+        menusTxt: dict = yaml.safe_load(mfile)
+        mfile.close()
+        return(menusTxt)
 
-        def qtMenu(self):
-            self.main_menu = self.menuBar().addMenu("&File")
-            self.newItem = Wid.QAction("New", self, triggered=self.newFile)
-            self.exitItem = Wid.QAction("Exit", self, triggered=Wid.qApp.quit)
-            self.main_menu.addAction(self.newItem)
-            self.main_menu.addAction(self.exitItem)
+    def initWindow(self, menusTxt):
+        self.setWindowTitle(self.title)
+        self.setGeometry(100, 100, 500, 300)
+        self.setWindowIcon(Gui.QIcon(self.iconname))
+        self.qtMenu(menusTxt)
 
-        def newFile(self):
-            print("def newFile(self):")
+    def qtMenu(self, menusTxt: dict):
+        global parent_str
+        for x in menusTxt.values():
+            for iKey, iValue in x.items():
+                if iKey == "menulabel":
+                    parent_str = iValue.strip('&') + "Dialog"
+                    exec("%s = %s" % (parent_str, "self.menuBar().addMenu(iValue)"))
+                else:
+                    child_str = iValue.strip('&').lower() + "Action = PyQt5.QtWidgets.QAction('" + iValue.strip('&') + "', self)"
+                    print(child_str)
+                    exec("%s" % (child_str))
 
-        def openFileNameDialog(self):
-            options = QFileDialog.Options()
-            options |= QFileDialog.DontUseNativeDialog
-            fileName, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", "",
-                                                      "All Files (*);;Python Files (*.py)", options=options)
-            if fileName:
-                print(fileName)
+                    child_str = parent_str + ".addAction(\"" + iValue + "\")"
+                    print(child_str)
+                    exec("%s" % (child_str))
 
-        def openFile(self):
-            # Logic for opening an existing file goes here...
-            openFileNameDialog()
-            self.centralWidget.setText("<b>File > Open...</b> clicked")
-
-# ### END OF MAINWINDOW CLASS ################################################
+                    child_str = iValue.strip('&').lower() + "Action.triggered.connect(self." + iValue.strip('&').lower() + parent_str + ")"
+                    print(child_str)
+                    exec("%s" % (child_str))
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
 
-    window = MainWindow()
-    window.show()
-    app.exec_()
+    app = Wid.QApplication(sys.argv)
+    qt_app = Window()
+    qt_app.show()
     sys.exit(app.exec_())
-# ##############################################################################
-# TODO: Add all of these menu options
-# File Option: New
-# File Option: Open
-# File Option: Save
-# File Option: Save As
-# File Option: Rename
-# File Option: Close
-# File Option: Export
-# File Option: Print
-# File Option: Settings
-# File Option: Exit
-# #############################################################################
-# findMenu = editMenu.addMenu("&Find and Replace")
-# findMenu.addAction("Find")
-# findMenu.addAction("Replace")
-# #############################################################################
-# Help Option: Getting Started
-# Help Option: Search Help
-# Help Option: Documentation
-# Help Option: About
-

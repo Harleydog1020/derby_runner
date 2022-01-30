@@ -7,7 +7,7 @@ Python
 """
 
 # Check for hard dependencies
-# hard_dependencies = ("","","")
+hard_dependencies = ("", "", "")
 missing_dependencies = []
 
 for dependency in hard_dependencies:

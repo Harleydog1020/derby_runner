@@ -3,3 +3,21 @@ filemenu:
   entry1: "&New"
   entry2: "&Open"
   entry4: "&Save"
+editmenu:
+  menulabel: "&Edit"
+stationsmenu:
+  menulabel: "&Stations"
+waypointsmenu:
+  menulabel: "&Waypoints"
+coursesmenu:
+  menulable: "&Courses"
+unitsmenu:
+  menulabel: "&Units"
+teamsmenu:
+  menulabel: "&Teams"
+youthsmenu:
+  menulabel: "&Youths"
+adultsmenu:
+  menulabel: "&Adults"
+helpmenu:
+  menulabel: "&Help"
