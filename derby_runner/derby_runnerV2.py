@@ -14,7 +14,48 @@ from PyQt5.QtCore import QAbstractTableModel, Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QHeaderView
 
+stations_columns = ['StationID', 'sName', 'sDescription', 'TroopID', 'Primary\nAdultID',
+                    'Secondary\nAdultID', 'Longitude', 'Latitude', 'EventID']
+df_stations = pandas.DataFrame(columns=stations_columns, index=[1, 2, 3, 4, 5])
+
 # ##############################################################################
+def main():
+    App = Wid.QApplication(sys.argv)
+    homeWin = Window()
+    homeWin.setWindowTitle("Derby Runner")
+    left = 1000
+    top = 1200
+    width = 1870
+    height = 1480
+    homeWin.setGeometry(left, top, width, height)
+    menus_text = ymlread("/home/brickyard314/PycharmProjects/derby_runner/resources/dr_menus.yml")
+
+    Qmodel = pandasModel(df_stations)
+    homeWin.table.setModel(Qmodel)
+    menuBar = Wid.QMainWindow.menuBar(homeWin)
+
+    File = menuBar.addMenu("&File")
+
+    New = File.addAction('&New')
+    New.triggered.connect(lambda: homeWin.newFileDialog())
+
+    Open = File.addAction('&Open')
+    Open.triggered.connect(lambda: homeWin.openFileDialog())
+
+
+    Save = File.addAction('&Save')
+    Save.triggered.connect(lambda: homeWin.saveFileDialog())
+
+    Edit = menuBar.addMenu("&Edit")
+
+    sshFile = "../resources/derby_runner.stylesheet"
+    with open(sshFile, "r") as fh:
+        homeWin.setStyleSheet(fh.read())
+
+    homeWin.show()
+
+    sys.exit(App.exec_())
+
 
 def ymlread(x: str):
     mfile = open(x, "r")
@@ -65,51 +106,17 @@ class pandasModel(QAbstractTableModel):
 class Window(Wid.QMainWindow):
     def __init__(self):
         super(Window, self).__init__()
-        self.fileName = None
-        self.initUI()
 
-    def initUI(self):
-
-        stations_columns = ['StationID', 'sName', 'sDescription', 'TroopID', 'Primary\nAdultID',
-                            'Secondary\nAdultID', 'Longitude', 'Latitude', 'EventID']
-        self.df_stations = pandas.DataFrame(columns=stations_columns, index=[1, 2, 3, 4, 5])
         #        self.iconname = "D:/_Qt/img/py-qt.png"
-        self.setWindowTitle("Derby Runner")
-        left = 1000
-        top = 1200
-        width = 1870
-        height = 1480
-        self.setGeometry(left, top, width, height)
-
-        menus_text = ymlread("/home/brickyard314/PycharmProjects/derby_runner/resources/dr_menus.yml")
+        self.fileName = None
+        self.df_events = None
         self.table = QTableView()
         self.mainnmenu = Wid.QMainWindow.menuBar(self)
-        self.setCentralWidget(self.table)
-
-        Qmodel = pandasModel(self.df_stations)
-        self.table.setModel(Qmodel)
+        # +++
+        self.model = pandasModel(df_stations)
+        self.table.setModel(self.model)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-
-        self.menuBar = Wid.QMainWindow.menuBar(self)
-
-        File = self.menuBar.addMenu("&File")
-
-        New = File.addAction('&New')
-        New.triggered.connect(lambda: self.newFileDialog())
-
-        Open = File.addAction('&Open')
-        Open.triggered.connect(lambda: self.openFileDialog())
-
-        Save = File.addAction('&Save')
-        Save.triggered.connect(lambda: self.saveFileDialog())
-
-        Edit = self.menuBar.addMenu("&Edit")
-
-        sshFile = "../resources/derby_runner.stylesheet"
-        with open(sshFile, "r") as fh:
-            self.setStyleSheet(fh.read())
-
-        self.show()
+        self.setCentralWidget(self.table)
 
     def newFileDialog(self):
         x = 1
@@ -124,9 +131,9 @@ class Window(Wid.QMainWindow):
                                                        filter="All Files (*);;Python Files (*.py)",
                                                        options=options)
         if self.fileName[0]:
-            self.df_events = pandas.read_hdf(self.fileName, key="events")
+            df_events = pandas.read_hdf(self.fileName, key="events")
 #            print(df_events)
-            self.model = pandasModel(self.df_events)
+            self.model = pandasModel(df_events)
             self.table.setModel(self.model)
             self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
             self.setCentralWidget(self.table)
@@ -136,12 +143,13 @@ class Window(Wid.QMainWindow):
         options |= QFileDialog.DontUseNativeDialog
         self.fileName, _ = QFileDialog.getSaveFileName(self, 'Save File', '../resources/', "Python Files (*.py);;All Files (*)",
                                                options=QFileDialog.DontUseNativeDialog)
-        if self.fileName[0]:
-            self.df_events = self.df_events.astype(str)
-            self.df_events.to_hdf(self.fileName, key='events', mode='w')
+        if self.fileName[0] == '':
             return 0
+#        self.fileName, _ = QFileDialog.getSaveFileName(self,
+#                                                       caption="Save File",
+#                                                       directory="~PycharmProjects/derby_runner/resources/",
+#                                                       filter="All Files (*)",
+#                                                       options=options)
 
 if __name__ == "__main__":
-    app = Wid.QApplication(sys.argv)
-    ex = Window()
-    sys.exit(app.exec_())
+    main()

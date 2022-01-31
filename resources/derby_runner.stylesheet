@@ -20,6 +20,23 @@ QMenuBar::item
 
 QMenuBar::item:selected
 {
-    background-color: blue;
-    color: red;
+    background-color: #2596be;
+    color: white;
+}
+QMenu
+{
+    font-size: 14pt;
+    border: 1px solid #000;
+}
+
+QMenu::item
+{
+    color: black;
+    padding: 2px 20px 2px 20px;
+}
+
+QMenu::item:selected
+{
+    background-color: #2596be;
+    color: white;
 }

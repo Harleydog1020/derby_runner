@@ -10,13 +10,13 @@ stationsmenu:
 waypointsmenu:
   menulabel: "&Waypoints"
 coursesmenu:
-  menulable: "&Courses"
+  menulabel: "&Courses"
 unitsmenu:
   menulabel: "&Units"
-teamsmenu:
-  menulabel: "&Teams"
+squadmenu:
+  menulabel: "&Squads"
 youthsmenu:
-  menulabel: "&Youths"
+  menulabel: "&Youth"
 adultsmenu:
   menulabel: "&Adults"
 helpmenu:
