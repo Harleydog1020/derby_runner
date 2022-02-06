@@ -1,6 +1,6 @@
 import yaml
 
-mfile = open("../resources/dr_menus.yml","r")
+mfile = open("../resources/dr_menus_full.yml","r")
 menusTxt: dict = yaml.safe_load(mfile)
 
 print(menusTxt)

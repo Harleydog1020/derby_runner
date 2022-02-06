@@ -27,7 +27,8 @@ print(test_number)
 test_two = xf.testclass.test_two(input_number=3)
 print(test_two)
 # ##############################################################################
-
+# CLASS TableModel - handles interaction of pandas dataframes with PyQt window
+#
 # ##############################################################################
 class pandasModel(QAbstractTableModel):
 
@@ -107,13 +108,95 @@ class Window(Wid.QMainWindow):
 
         sshFile = "../resources/derby_runner.stylesheet"
         with open(sshFile, "r") as fh:
-            self.setStyleSheet(fh.read())
+            x = self.setStyleSheet(fh.read())
 
-        self.show()
+        self.newEvent()
 
-    def newFileDialog(self):
-        x = 1
-        print(x)
+    def Ui_setup(self, data):
+        self.centralwidget = QtWidgets.QMainWindow
+#        self.centralwidget.setObjectName(, "centralwidget")
+        self.table = QtWidgets.QTableView()
+        self.table.setGeometry(QtCore.QRect(0, 0, 256, 192))
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Maximum)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.table.sizePolicy().hasHeightForWidth())
+        self.table.setSizePolicy(sizePolicy)
+        self.table.setMaximumSize(QtCore.QSize(1000, 1000))
+
+        self.newEvent()
+
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('&File')
+
+        newAct = QAction(QIcon('~/PycharmProjects/derby_runner/resources/icons/notebook--plus.png'), '&New', self)
+        newAct.setShortcut('Ctrl+N')
+        newAct.setStatusTip('Create a New Event')
+        newAct.triggered.connect(self.newEvent)
+
+        openAct = QAction(QIcon('~/PycharmProjects/derby_runner/resources/icons/notebook--plus.png'), '&Open', self)
+        openAct.setShortcut('Ctrl+O')
+        openAct.setStatusTip('Open an Event')
+        openAct.triggered.connect(self.openFileNameDialog)
+        fileMenu.addAction((openAct))
+
+        saveAct = QAction(QIcon('~/PycharmProjects/derby_runner/resources/icons/notebook--plus.png'), '&Save', self)
+        saveAct.setShortcut('Ctrl+S')
+        saveAct.setStatusTip('Save an Event')
+        saveAct.triggered.connect(self.saveFileDialog)
+        fileMenu.addAction((saveAct))
+
+        exitAct = QAction(QIcon('exit.png'), '&Exit', self)
+        exitAct.setShortcut('Ctrl+Q')
+        exitAct.setStatusTip('Exit application')
+        exitAct.triggered.connect(qApp.quit)
+        fileMenu.addAction(exitAct)
+
+        editMenu = menubar.addMenu('&Edit')
+        cutAct = QAction('Cu&t', self)
+        cutAct.setShortcut('Ctrl+X')
+        cutAct.setStatusTip('Cut highlighted')
+        editMenu.addAction(cutAct)
+
+        copyAct = QAction('&Copy', self)
+        copyAct.setShortcut('Ctrl+C')
+        copyAct.setStatusTip('Copy highlighted')
+        editMenu.addAction(copyAct)
+
+        pasteAct = QAction('&Paste', self)
+        pasteAct.setShortcut('Ctrl-V')
+        pasteAct.setStatusTip('Paste from clipboard')
+        editMenu.addAction((pasteAct))
+
+        deleteAct = QAction('&Delete', self)
+        deleteAct.setShortcut('Delete')
+        deleteAct.setStatusTip('Delete highlighted')
+        editMenu.addAction(deleteAct)
+
+        viewMenu = menubar.addMenu('&View')
+        waypointsAct = QAction('&Waypoints', self)
+        waypointsAct.setShortcut('Ctrl+W')
+        waypointsAct.setStatusTip('Switch to Waypoints Table')
+        viewMenu.addAction(waypointsAct)
+        waypointsAct.triggered.connect(self.viewWay)
+
+        stationsAct = QAction('&Stations', self)
+        stationsAct.setShortcut('Ctrl+S')
+        stationsAct.setStatusTip('Switch to Stations Table')
+        viewMenu.addAction(stationsAct)
+        stationsAct.triggered.connect(self.viewStt)
+
+        coursesAct = QAction('&Courses', self)
+        coursesAct.setShortcut('Ctrl+C')
+        coursesAct.setStatusTip('Switch to Courses Table')
+        viewMenu.addAction(coursesAct)
+        coursesAct.triggered.connect(self.viewCou)
+
+        unitsAct = QAction('&Units', self)
+        unitsAct.setShortcut('Ctrl+U')
+        unitsAct.setStatusTip('Switch to Units Table')
+        viewMenu.addAction(unitsAct)
+        unitsAct.triggered.connect(self.viewUnt)
 
     def openFileDialog(self,):
         options = QFileDialog.Options()
