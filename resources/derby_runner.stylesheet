@@ -1,6 +1,6 @@
 QHeaderView::section {
-    background-color: white;
-    color: black;
+    background-color: red;
+    color: white;
     padding-left: 4px;
     padding-right: 6px;
     border: 1px solid #6c6c6c;
@@ -8,47 +8,55 @@ QHeaderView::section {
 }
 QFrame{
     padding: 2px;
-    background-color:  #b0c4de;
+    background-color:  green;
     color: black;
     font-size: 16pt;
 }
 QFrame#frame_bottom{
 	border-top: 1px solid C706;
-	background-color: C707;
+	background-color: C706;
 }
 
 QFrame#line,QFrame#line_2,QFrame#line_3,QFrame#line_4{
 	background-color: C706;
 }
-QTableView{
-background-color: #cccccc;
+QTableView
+{
+background-color: yellow;
 font-size: 12pt;
 }
-QTableView::item {
+QTableView::item
+{
   margin: 0px;
   padding-left: 7px;
   padding-right: 7px;
   border: none;
 }
 
-QTableView::item:hover {
+QTableView::item:hover
+{
 background-color: transparent;
 }
 
-QTableView::item:selected {
+QTableView::item:selected
+{
 background-color: rgba(C702, 0.15);
 }
-QLabel {
+QLabel
+{
   font-size: 12px;
 }
-QDateEdit {
+QDateEdit
+{
   	background-color: transparent;
 }
 
-QTimeEdit {
+QTimeEdit
+{
   	background-color: transparent;
 }
-QTimeEdit#edit_time {
+QTimeEdit#edit_time
+{
 	border:1px solid C704;
 	border-radius: 2px;
   padding-left: 8px;
@@ -101,10 +109,15 @@ QMenu::item:selected
     background-color: #778899;
     color: white;
 }
+QCalendarWidget
+{
+    background-color: #778899;
+    color: red;
+}
 QStatusBar
 {
-    color: white;
-    background-color: #2596be;
+    color: black;
+    background-color: #cccccc;
     border: 1px solid #000;
-    font-size: 8pt;
+    font-size: 12pt;
 }
