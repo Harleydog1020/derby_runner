@@ -180,11 +180,13 @@ class SplashScreen(QWidget):
         self.counter += 1
 
 
-class WindowApp(QtWidgets.QMainWindow):
+class WindowApp(QtWidgets.QMessageBox):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Welcome to Derby Runner v0.1")
         self.setGeometry(1000, 600, 750, 500)
+        self.setText("Derby Runner v0.1")
+        self.setInformativeText("Copyright ©2022")
         self.show()
 
 
