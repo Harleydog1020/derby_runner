@@ -150,7 +150,7 @@ class Ui_MainWindow(object):
 
         MainWindow.setObjectName("MainWindow")
         self.centralwidget = QtWidgets.QWidget(MainWindow)
-        self.centralwidget.setObjectName("centralwidget")
+        self.centralwidget.setObjectName("central_widget")
         MainWindow.setWindowTitle('Derby Runner')
         i_left = 600
         i_top = 900
@@ -349,7 +349,7 @@ class Ui_MainWindow(object):
         self.df_courses = pd.DataFrame(columns=courses_columns, index=[0, 1, 2, 3, 4, 5])
         self.df_courses.fillna('Empty', inplace=True)
 
-        coursepoint_columns = ['CourseID', 'StopType', 'StopID', 'NextStopType', 'NextStopID']
+        coursepoint_columns = ['CoursepointID', 'CourseID', 'StopType', 'StopID', 'NextStopType', 'NextStopID']
         self.df_coursepoints = pd.DataFrame(columns=coursepoint_columns, index=[0, 1, 2, 3, 4, 5])
         self.df_coursepoints.fillna('Empty', inplace=True)
 

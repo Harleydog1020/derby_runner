@@ -1,0 +1,33 @@
+TODO Add docustring elements like Version and Name which can be added to Window Title Help and Welcome Screens
+TODO Scoring Functionality
+TODO Reporting Functionality
+TODO Hide "ID" columns
+TODO Overlay dropdown combobox editing for "ID" links
+TODO Switch tableview with map view and back functionality
+TODO Set default "zoom" for map
+TODO Use map to set longitude and latitude via click and right mouse button
+TODO Show points and currently active course on map
+TODO Change table view(s) to be driven by tabs?
+TODO Settings user name, initials, default directory settings
+TODO Functionality to asses the size of the user's screen in order to set initial Geometry
+TODO Settings functionality - style sheet selection, individual colors, font size, font family, user defined columns;
+TODO Window tools store current layout / restore defaults for layout and stylesheet
+TODO Add status of changes, saved or not saved, to the status bar.
+TODO Facilitate column labels instead of column names which are "technical"
+TODO Install functionality from source for Windows, MacOS, Unix/Linix
+TODO Install functionality as executable for Windows, MacOS, Unix/Linix
+TODO Test functionality for install from source for Windows, MacOS, Unix/Linix
+TODO Fix height of toolbar
+TODO Adjust size/margins/minimum height and width of calendar
+TODO Menubar separators
+TODO Meunu dropdown separators
+TODO Toolbar separators
+TODO Add filename/[untitled] to Window Title
+TODO Expand the RED box to show relevent help documentation
+TODO Show Event dates on calendar
+TODO Show other events on calendar using colors and hover hover for details
+TODO Add text to welcome screen
+TODO Youtube videos for Derby Runner tutorials for installation, testing, functionalities
+TODO Screen shots and GitHub documentation
+TODO Help menu documentation = standalone pdf documentation
+TODO Event "todo list" for users to track things needed for the event, including tasks as well as materials to be acquired

@@ -1,230 +1,621 @@
 import sys
-import pandas
-import PyQt5
-import yaml
-import h5py
+import time
+import dr_utils as dru
+import pandas as pd
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import Qt, QSize, QTimer
+from PyQt5.QtGui import QPalette, QColor, QIcon
+from PyQt5.QtWebEngineWidgets import QWebEngineView
+from PyQt5.QtWidgets import (
+    QWidget, QHBoxLayout, QFileDialog, QVBoxLayout, QLabel, QFrame,
+    QApplication, QToolBar, QAction, QMenuBar, QSplitter, QProgressBar
+)
 
-import testfunction as xf
-
-import PyQt5.QtWidgets as Wid
-import pyarrow.feather as feather
-
-from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QLineEdit, QFileDialog, QTableView
-from PyQt5.QtCore import QAbstractTableModel, Qt
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QHeaderView
 
 # ##############################################################################
-
-def ymlread(x: str):
-    mfile = open(x, "r")
-    menusTxt: dict = yaml.safe_load(mfile)
-    mfile.close()
-    return (menusTxt)
-
-test_number = xf.testfunction(3)
-print(test_number)
-test_two = xf.testclass.test_two(input_number=3)
-print(test_two)
-# ##############################################################################
-# CLASS TableModel - handles interaction of pandas dataframes with PyQt window
+# CLASS Color - test widget
 #
 # ##############################################################################
-class pandasModel(QAbstractTableModel):
 
-    def __init__(self, data: object) -> object:
-        QAbstractTableModel.__init__(self)
-        self._data = data
 
-    def flags(self, index):
-        return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
+class Color(QWidget):
 
-    def setData(self, index, value, role):
-        if role == Qt.EditRole:
-            self._data.iloc[index.row(), index.column()] = value
-            return True
-        return False
+    def __init__(self, color):
+        super(Color, self).__init__()
+        self.setAutoFillBackground(True)
 
-    def rowCount(self, parent=None):
-        return self._data.shape[0]
+        palette = self.palette()
+        palette.setColor(QPalette.Window, QColor(color))
+        self.setPalette(palette)
 
-    def columnCount(self, parnet=None):
-        return self._data.shape[1]
 
-    def data(self, index, role=Qt.DisplayRole):
+# ##############################################################################
+# CLASS CustomTableDelegate
+#
+# ##############################################################################
+
+class CustomTableDelegate(QtWidgets.QStyledItemDelegate):
+    def __init__(self, parent=None):
+        super(CustomTableDelegate, self).__init__(parent)
+        # self.setMouseTracking(True)
+        self._mousePressAnchor = ''
+        self._lastHoveredAnchor = ''
+
+    def paint(self, painter, option, index):
+        if option.state & QtWidgets.QStyle.State_MouseOver:
+            painter.fillRect(option.rect, QtGui.QColor(0, 100, 200))
+            QtWidgets.QStyledItemDelegate.paint(self, painter, option, index)
+        else:
+            painter.fillRect(option.rect, QtGui.QColor(150, 220, 255))
+            QtWidgets.QStyledItemDelegate.paint(self, painter, option, index)
+
+    def mouse_press_event(self, event):
+        anchor = self.anchor_at(event.pos())
+        self._mousePressAnchor = anchor
+
+    def mouse_move_event(self, event):
+        anchor = self.anchor_at(event.pos())
+        if self._mousePressAnchor != anchor:
+            self._mousePressAnchor = ''
+
+        if self._lastHoveredAnchor != anchor:
+            self._lastHoveredAnchor = anchor
+            if self._lastHoveredAnchor:
+                QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+            else:
+                QtWidgets.QApplication.restoreOverrideCursor()
+
+    def mouse_release_event(self, event):
+        if self._mousePressAnchor:
+            anchor = self.anchor_at(event.pos())
+            if anchor == self._mousePressAnchor:
+                self.link_activated.emit(anchor)
+            self._mousePressAnchor = ''
+
+    def anchor_at(self, pos):
+        index = self.indexAt(pos)
         if index.isValid():
-            if role == Qt.DisplayRole or role == Qt.EditRole:
-                value = self._data.iloc[index.row(), index.column()]
-                return str(value)
-        return None
+            delegate = self.itemDelegate(index)
+            if delegate:
+                item_rect = self.visualRect(index)
+                relative_click_position = pos - item_rect.topLeft()
+                html = self.model().data(index, QtCore.Qt.DisplayRole)
+                return delegate.anchor_at(html, relative_click_position)
+        return ''
 
-    def headerData(self, col, orientation, role):
-        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            return self._data.columns[col]
 
-# +++
-class Window(Wid.QMainWindow):
+class CustomTableView(QtWidgets.QTableView):
+    def __init__(self, parent=None):
+        super(CustomTableView, self).__init__(parent)
+
+    def set_mouse_over(self, row):
+        print(row)
+
+
+def read_stylesheets():
+    ssh_file = "/home/brickyard314/PycharmProjects/derby_runner/derby_runner/style_blue.css"
+    with open(ssh_file, "r") as fh:
+        style_blue = fh.read()
+
+    ssh_file = "/home/brickyard314/PycharmProjects/derby_runner/derby_runner/style_black.css"
+    with open(ssh_file, "r") as fh:
+        style_black = fh.read()
+
+    ssh_file = "/home/brickyard314/PycharmProjects/derby_runner/derby_runner/style_gray.css"
+    with open(ssh_file, "r") as fh:
+        style_gray = fh.read()
+
+    style_sheet = style_blue
+    return style_sheet
+
+
+class StyleDriver:
     def __init__(self):
-        super(Window, self).__init__()
-        self.fileName = None
-        self.initUI()
+        super(StyleDriver, self).__init__()
 
-    def initUI(self):
 
-        stations_columns = ['StationID', 'sName', 'sDescription', 'TroopID', 'Primary\nAdultID',
-                            'Secondary\nAdultID', 'Longitude', 'Latitude', 'EventID']
-        self.df_stations = pandas.DataFrame(columns=stations_columns, index=[1, 2, 3, 4, 5])
-        #        self.iconname = "D:/_Qt/img/py-qt.png"
+class SplashScreen(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setFixedSize(700, 350)
+        self.setWindowFlag(Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.counter = 0
+        self.n = 100
+        self.init_splash()
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.loading)
+        self.timer.start(30)
+
+    def init_splash(self):
+        # layout to display splash scrren frame
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+        # splash screen frame
+        self.frame = QFrame()
+        layout.addWidget(self.frame)
+        # splash screen title
+        self.title_label = QLabel(self.frame)
+        self.title_label.setObjectName('title_label')
+        self.title_label.resize(690, 120)
+        self.title_label.move(0, 5)  # x, y
+        self.title_label.setText('Loading Derby Runner')
+        self.title_label.setAlignment(Qt.AlignCenter)
+        # splash screen title description
+        self.description_label = QLabel(self.frame)
+        self.description_label.resize(690, 40)
+        self.description_label.move(0, self.title_label.height())
+        self.description_label.setObjectName('desc_label')
+        self.description_label.setText('<b>Derby Runner</b>')
+        self.description_label.setAlignment(Qt.AlignCenter)
+        # splash screen pogressbar
+        self.progressBar = QProgressBar(self.frame)
+        self.progressBar.resize(self.width() - 200 - 10, 50)
+        self.progressBar.move(100, 180)  # self.description_label.y()+130
+        self.progressBar.setAlignment(Qt.AlignCenter)
+        self.progressBar.setFormat('%p%')
+        self.progressBar.setTextVisible(True)
+        self.progressBar.setRange(0, self.n)
+        self.progressBar.setValue(20)
+        # spash screen loading label
+        self.loading_label = QLabel(self.frame)
+        self.loading_label.resize(self.width() - 10, 50)
+        self.loading_label.move(0, self.progressBar.y() + 70)
+        self.loading_label.setObjectName('loading_label')
+        self.loading_label.setAlignment(Qt.AlignCenter)
+        self.loading_label.setText('Loading...')
+
+    def loading(self):
+        # set progressbar value
+        self.progressBar.setValue(self.counter)
+        # stop progress if counter
+        # is greater than n and
+        # display main window app
+        if self.counter >= self.n:
+            self.timer.stop()
+            self.close()
+            time.sleep(1)
+            self.WindowApp = WindowApp()
+            self.WindowApp.show()
+        self.counter += 1
+
+
+class WindowApp(QtWidgets.QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Welcome to Derby Runner v0.1")
+        self.setGeometry(1000, 600, 750, 500)
+        self.show()
+
+
+class DateEditDelegate(QtWidgets.QItemDelegate):
+    def createEditor(self, widget, option, index):
+        editor = QtWidgets.QDateEdit(widget)
+        editor.setMinimumHeight(50)
+        editor.setStyleSheet("background-color: red;")
+        if option.state & QtWidgets.QStyle.State_MouseOver:
+            editor.setStyleSheet("background-color: green; color: yellow;")
+        else:
+            editor.setStyleSheet("background-color: yellow; color: green;")
+        return editor
+
+
+class ComboBoxDelegate(QtWidgets.QItemDelegate):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.items = None
+
+    def set_items(self, items):
+        self.items = items
+
+    def createEditor(self, widget, option, index):
+        editor = QtWidgets.QComboBox(widget)
+        editor.addItems(self.items)
+        return editor
+
+    def setEditorData(self, editor, index):
+        editor.setCurrentIndex(0)
+
+    def setModelData(self, editor, model, index):
+        model.setData(index, editor.currentIndex(), QtCore.Qt.EditRole)
+
+    def updateEditorGeometry(self, editor, option, index):
+        editor.setGeometry(option.rect)
+
+    def paint(self, painter, option, index):
+        text = self.items[index.row()]
+        option.text = text
+        QtWidgets.QApplication.style().drawControl(QtWidgets.QStyle.CE_ItemViewItem, option, painter)
+
+
+def help_about():
+    about_msg = QtWidgets.QMessageBox()
+    about_msg.setStyleSheet("font-size: 10pt;")
+    about_msg.setWindowTitle("About Derby Runner")
+    about_msg.setText("Derby Runner v0.1")
+    about_msg.setInformativeText("Copyright ©2022")
+    about_msg.setIcon(QtWidgets.QMessageBox.Information)
+    about_msg.setDetailedText("More to come...")
+    about_msg.exec_()
+
+
+class MainWindow(QtWidgets.QMainWindow):
+    def __init__(self):
+        super(MainWindow, self).__init__()
+        self.itinerary_columns = ['ItineraryID', 'Start\nStation']
+        self.schedules_columns = ['ScheduleID', 'Start', 'End', 'Note']
+        self.youths_columns = ['YouthID', 'First Name', 'Last Name', 'Email', 'Primary Phone', 'UnitID']
+        self.adults_columns = ['AdultID', 'First Name', 'Last Name', 'Email', 'Primary Phone', 'UnitID']
+        self.squads_columns = ['SquadID', 'SquadType', 'SquadName', 'UnitID', 'SquadLeaderID', 'ItineraryID']
+        self.units_columns = ['UnitID', 'UnitType', 'UnitNumber', 'Leader1ID', 'Leader2ID', 'Leader3ID',
+                              'ParticipateFlag', 'HostFlag', 'StationID']
+        self.coursepoint_columns = ['CourseID', 'StopType', 'StopID', 'NextStopType', 'NextStopID']
+        self.courses_columns = ['CourseID', 'cName', 'cDescription', 'FirstStopType', 'FirstStopID']
+        self.waypoints_columns = ['WaypointID', 'Name', 'Description', 'Longitude', 'Latitude']
+        self.stations_columns = ['StationID', 'Name', 'Description', 'TroopID', 'PrimaryAdultID', 'SecondaryAdultID',
+                                 'Longitude', 'Latitude']
+        self.df_units = dru.init_units(self)
+        self.df_stations = dru.init_stations(self)
+        self.df_waypoints = dru.init_waypoints(self)
+        self.df_courses = dru.init_courses(self)
+        self.df_coursepoints = dru.init_coursepoints(self)
+        self.df_adults = dru.init_adults(self)
+        self.df_youths = dru.init_youths(self)
+        self.df_itineraries = dru.init_itineraries(self)
+        self.df_schedules = dru.init_schedules(self)
+        self.df_squads = dru.init_squads(self)
+
+        self.layout = QtWidgets.QVBoxLayout()
+        self.comboBox = QtWidgets.QComboBox()
         self.setWindowTitle("Derby Runner")
-        left = 1000
-        top = 1200
-        width = 1870
-        height = 1480
-        self.setGeometry(left, top, width, height)
+        self.setGeometry(500, 500, 2000, 1000)
+        self.main_window = QtWidgets.QMainWindow()
+        self.central_widget = QtWidgets.QWidget(self.main_window)
+        self.central_widget.setObjectName("central_widget")
+        self.menu_bar = QMenuBar()
+        self.menu_bar.setStyleSheet("font-size: 12pt; padding: 5px; margin: 1px;")
+        self.menu_bar.setObjectName("menu_bar")
+        self.setMenuBar(self.menu_bar)
+        # # LAYOUTS ####################################################################
+        self.layout_main = QHBoxLayout()
+        self.splitter_main = QSplitter(Qt.Horizontal)
+        self.splitter_data = QSplitter(Qt.Vertical)
+        self.splitter_utils = QSplitter(Qt.Vertical)
+        self.splitter_data.setGeometry(QtCore.QRect(5, 9, 2200, 1100))
 
-        menus_text = ymlread("/home/brickyard314/PycharmProjects/derby_runner/resources/dr_menus.yml")
-        self.table = QTableView()
-        self.mainnmenu = Wid.QMainWindow.menuBar(self)
-        self.setCentralWidget(self.table)
+        self.table_view = CustomTableView()
+        self.table_view.setMouseTracking(True)
+        self.table_view.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.table_view.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.model = QtGui.QStandardItemModel()
+        self.table_view.setModel(self.model)
+        self.table_view.setItemDelegate(CustomTableDelegate())
+        date_delegate = DateEditDelegate(self)
+        self.table_view.setItemDelegateForColumn(3, date_delegate)
+        leader_list = ['Empty', 'Macron', 'Trudeau', 'Mandela', 'Churchill', 'Kobe', 'Lincoln']
+        combo_delegate = ComboBoxDelegate(self)
+        combo_delegate.set_items(leader_list)
+        self.table_view.setItemDelegateForColumn(4, combo_delegate)
+        for i in range(self.model.rowCount()):
+            self.table_view.openPersistentEditor(self.model.index(i, 4))
 
-        Qmodel = pandasModel(self.df_stations)
-        self.table.setModel(Qmodel)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table_view.setStyleSheet("background-color: yellow;")
 
-        self.menuBar = Wid.QMainWindow.menuBar(self)
+        self.setup_ui()
 
-        File = self.menuBar.addMenu("&File")
+    def setup_ui(self):
+        self.new_event()
+        current_style = read_stylesheets()
+        MainWindow.setStyleSheet(self, current_style)
 
-        New = File.addAction('&New')
-        New.triggered.connect(lambda: self.newFileDialog())
+        h_lw = QtWidgets.QWidget(self.central_widget)
+        h_lw.setGeometry(QtCore.QRect(-1, 9, 2200, 1100))
+        print("200: setup started")
+        # MENU BAR ##############################################################
+        file_menu = self.menu_bar.addMenu('&File')
 
-        Open = File.addAction('&Open')
-        Open.triggered.connect(lambda: self.openFileDialog())
+        new_act = file_menu.addAction('&New')
+        new_act.setShortcut('Ctrl+N')
+        new_act.setStatusTip('Create New Event')
+        new_act.triggered.connect(self.new_event)
+        file_menu.addAction(new_act)
 
-        Save = File.addAction('&Save')
-        Save.triggered.connect(lambda: self.saveFileDialog())
+        open_act = file_menu.addAction('&Open')
+        open_act.setShortcut('Ctrl+O')
+        open_act.setStatusTip('Open an Event')
+        open_act.triggered.connect(self.open_filename_dialog)
+        file_menu.addAction(open_act)
 
-        Edit = self.menuBar.addMenu("&Edit")
+        save_act = file_menu.addAction('&Save')
+        save_act.setShortcut('Ctrl+S')
+        save_act.setStatusTip('Save Current Event')
+        save_act.triggered.connect(self.save_file_dialog)
+        file_menu.addAction(save_act)
 
-        sshFile = "../resources/derby_runner.stylesheet"
-        with open(sshFile, "r") as fh:
-            x = self.setStyleSheet(fh.read())
+        export_act = file_menu.addAction('&Export')
+        #export_act.triggered.connect(self.export_dialog)
+        file_menu.addAction(export_act)
 
-        self.newEvent()
+        saveall_act = file_menu.addAction('Save &All')
+        file_menu.addAction(saveall_act)
 
-    def Ui_setup(self, data):
-        self.centralwidget = QtWidgets.QMainWindow
-#        self.centralwidget.setObjectName(, "centralwidget")
-        self.table = QtWidgets.QTableView()
-        self.table.setGeometry(QtCore.QRect(0, 0, 256, 192))
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Maximum)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.table.sizePolicy().hasHeightForWidth())
-        self.table.setSizePolicy(sizePolicy)
-        self.table.setMaximumSize(QtCore.QSize(1000, 1000))
+        reload_act = file_menu.addAction('&Reload from disk')
+        file_menu.addAction(reload_act)
 
-        self.newEvent()
+        settings_act = file_menu.addAction('Settings')
+        settings_act.setStatusTip('Edit how Derby Runner looks and works')
+        # settings_act.triggered.connect(self.settings_dialog)
+        file_menu.addAction(settings_act)
 
-        menubar = self.menuBar()
-        fileMenu = menubar.addMenu('&File')
+        edit_menu = self.menu_bar.addMenu('&Edit')
+        cut_act = edit_menu.addAction('Cu&t')
+        edit_menu.addAction(cut_act)
+        copy_act = edit_menu.addAction('&Copy')
+        edit_menu.addAction(copy_act)
+        paste_act = edit_menu.addAction('&Paste')
+        edit_menu.addAction(paste_act)
+        del_act = edit_menu.addAction('&Delete')
+        edit_menu.addAction(del_act)
+        find_act = edit_menu.addAction('&Find')
+        edit_menu.addAction(find_act)
+        repl_act = edit_menu.addAction('&Replace')
+        edit_menu.addAction(repl_act)
+        selall_act = edit_menu.addAction('Select &All')
+        edit_menu.addAction(selall_act)
 
-        newAct = QAction(QIcon('~/PycharmProjects/derby_runner/resources/icons/notebook--plus.png'), '&New', self)
-        newAct.setShortcut('Ctrl+N')
-        newAct.setStatusTip('Create a New Event')
-        newAct.triggered.connect(self.newEvent)
+        view_menu = self.menu_bar.addMenu('&View')
 
-        openAct = QAction(QIcon('~/PycharmProjects/derby_runner/resources/icons/notebook--plus.png'), '&Open', self)
-        openAct.setShortcut('Ctrl+O')
-        openAct.setStatusTip('Open an Event')
-        openAct.triggered.connect(self.openFileNameDialog)
-        fileMenu.addAction((openAct))
+        waypoints_act = view_menu.addAction('&Waypoints')
+        waypoints_act.setShortcut('Ctrl+W')
+        waypoints_act.setStatusTip('Switch to Waypoints Table')
+        view_menu.addAction(waypoints_act)
+        waypoints_act.triggered.connect(self.view_waypoints)
 
-        saveAct = QAction(QIcon('~/PycharmProjects/derby_runner/resources/icons/notebook--plus.png'), '&Save', self)
-        saveAct.setShortcut('Ctrl+S')
-        saveAct.setStatusTip('Save an Event')
-        saveAct.triggered.connect(self.saveFileDialog)
-        fileMenu.addAction((saveAct))
+        stations_act = view_menu.addAction('&Stations')
+        stations_act.setShortcut('Ctrl+S')
+        stations_act.setStatusTip('Switch to Stations Table')
+        view_menu.addAction(stations_act)
+        stations_act.triggered.connect(self.view_stations)
 
-        exitAct = QAction(QIcon('exit.png'), '&Exit', self)
-        exitAct.setShortcut('Ctrl+Q')
-        exitAct.setStatusTip('Exit application')
-        exitAct.triggered.connect(qApp.quit)
-        fileMenu.addAction(exitAct)
+        courses_act = view_menu.addAction('&Courses')
+        courses_act.setShortcut('Ctrl+C')
+        courses_act.setStatusTip('Switch to Courses Table')
+        view_menu.addAction(courses_act)
+        courses_act.triggered.connect(self.view_courses)
 
-        editMenu = menubar.addMenu('&Edit')
-        cutAct = QAction('Cu&t', self)
-        cutAct.setShortcut('Ctrl+X')
-        cutAct.setStatusTip('Cut highlighted')
-        editMenu.addAction(cutAct)
+        coursepoints_act = view_menu.addAction('Course &Points')
+        coursepoints_act.setShortcut('Ctrl+P')
+        coursepoints_act.setStatusTip('Switch to Coursepoints Table')
+        view_menu.addAction(coursepoints_act)
+        coursepoints_act.triggered.connect(self.view_coursepoints)
 
-        copyAct = QAction('&Copy', self)
-        copyAct.setShortcut('Ctrl+C')
-        copyAct.setStatusTip('Copy highlighted')
-        editMenu.addAction(copyAct)
+        units_act = view_menu.addAction('&Units')
+        units_act.setShortcut('Ctrl+U')
+        units_act.setStatusTip('Switch to Units Table')
+        view_menu.addAction(units_act)
+        units_act.triggered.connect(self.view_units)
 
-        pasteAct = QAction('&Paste', self)
-        pasteAct.setShortcut('Ctrl-V')
-        pasteAct.setStatusTip('Paste from clipboard')
-        editMenu.addAction((pasteAct))
+        squads_act = view_menu.addAction('S&quads')
+        squads_act.setShortcut('Ctrl+Q')
+        squads_act.setStatusTip('Switch to Squads Table')
+        view_menu.addAction(squads_act)
+        squads_act.triggered.connect(self.view_squads)
 
-        deleteAct = QAction('&Delete', self)
-        deleteAct.setShortcut('Delete')
-        deleteAct.setStatusTip('Delete highlighted')
-        editMenu.addAction(deleteAct)
+        schedules_act = view_menu.addAction('Sc&hedules')
+        schedules_act.setShortcut('Ctrl+H')
+        schedules_act.setStatusTip('Switch to Schedules Table')
+        view_menu.addAction(schedules_act)
+        schedules_act.triggered.connect(self.view_schedules)
 
-        viewMenu = menubar.addMenu('&View')
-        waypointsAct = QAction('&Waypoints', self)
-        waypointsAct.setShortcut('Ctrl+W')
-        waypointsAct.setStatusTip('Switch to Waypoints Table')
-        viewMenu.addAction(waypointsAct)
-        waypointsAct.triggered.connect(self.viewWay)
+        itineraries_act = view_menu.addAction('&Itineraries')
+        itineraries_act.setShortcut('Ctrl+I')
+        itineraries_act.setStatusTip('Switch to Itineraries Table')
+        view_menu.addAction(itineraries_act)
+        itineraries_act.triggered.connect(self.view_itineraries)
 
-        stationsAct = QAction('&Stations', self)
-        stationsAct.setShortcut('Ctrl+S')
-        stationsAct.setStatusTip('Switch to Stations Table')
-        viewMenu.addAction(stationsAct)
-        stationsAct.triggered.connect(self.viewStt)
+        maps_menu = self.menu_bar.addMenu('&Maps')
+        help_menu = self.menu_bar.addMenu('&Help')
+        about_act = help_menu.addAction('&About')
+        about_act.setShortcut('Ctrl+A')
+        about_act.setStatusTip('About Derby Runner')
+        help_menu.addAction(about_act)
+        about_act.triggered.connect(help_about)
 
-        coursesAct = QAction('&Courses', self)
-        coursesAct.setShortcut('Ctrl+C')
-        coursesAct.setStatusTip('Switch to Courses Table')
-        viewMenu.addAction(coursesAct)
-        coursesAct.triggered.connect(self.viewCou)
+        # #DATA ########################################################################
+        data_tools = QToolBar()
+        data_tools.setGeometry(QtCore.QRect(0, 0, 800, 32))
+        data_tools.setIconSize(QSize(32, 32))
+        self.splitter_data.addWidget(data_tools)
 
-        unitsAct = QAction('&Units', self)
-        unitsAct.setShortcut('Ctrl+U')
-        unitsAct.setStatusTip('Switch to Units Table')
-        viewMenu.addAction(unitsAct)
-        unitsAct.triggered.connect(self.viewUnt)
+        button1_action = QAction(
+            QIcon("/home/brickyard314/PycharmProjects/derby_runner/resources/bonus/icons-32/blue-document.png"),
+            "Your button",
+            self)
+        button1_action.setStatusTip("This is not your button")
+        button1_action.setCheckable(True)
+        data_tools.addAction(button1_action)
+        self.splitter_data.addWidget(data_tools)
 
-    def openFileDialog(self,):
+        header = self.table_view.horizontalHeader()
+        header.setStretchLastSection(True)
+        vertical_header = self.table_view.verticalHeader()
+        vertical_header.hide()
+
+        self.table_view.resizeColumnsToContents()
+        self.table_view.setStyleSheet(
+            'font-size: 11pt; color: "black"; border: 1px solid #5CACEE; selection-background-color: #1B89CA; '
+            'selection-color: #F0F0F0;')
+        self.splitter_data.addWidget(self.table_view)
+
+        # #UTILITIES ##########################
+        widget1 = Color('red')
+        self.splitter_utils.addWidget(widget1)
+        widget2 = QtWidgets.QCalendarWidget(h_lw)
+        widget2.setStyleSheet(
+            'font-size: 11pt; color: "black"; border: 1px solid #5CACEE; selection-background-color: #1B89CA; '
+            'selection-color: #F0F0F0;')
+        self.splitter_utils.addWidget(widget2)
+        web_widget = QWebEngineView()
+        with open('/home/brickyard314/NC_maps/nc_test.html', 'r') as f:
+            html = f.read()
+        web_widget.setHtml(html)
+        web_widget.setStyleSheet(current_style)
+        self.splitter_utils.addWidget(web_widget)
+
+        # MAIN WINDOW ##################################################################
+        self.layout_main.setContentsMargins(5, 5, 5, 5)
+        self.layout_main.setSpacing(20)
+        self.splitter_main.addWidget(self.splitter_data)
+        self.splitter_main.addWidget(self.splitter_utils)
+        self.layout_main.addWidget(self.splitter_main)
+
+        widget = QWidget()
+        widget.setLayout(self.layout_main)
+        self.setCentralWidget(widget)
+
+        df_test = pd.DataFrame(columns=self.itinerary_columns, index=[0, 1, 2, 3, 4, 5])
+        df_test.fillna('Empty', inplace=True)
+        self.setup_table(self.df_units)
+
+    def setup_table(self, data):
+        print("265: setup_table")
+        column_labels = list(data)
+        self.model.setHorizontalHeaderLabels(column_labels)
+        i = 0
+        for index, row in data.iterrows():
+            j = 0
+            for col in row:
+                item = str(col)
+                if item == 'nan':
+                    item = ' '
+                self.model.setItem(i, j, QtGui.QStandardItem(item))
+                j = j + 1
+            i = i + 1
+
+        return
+
+    def settings_dialog(self):
+        dlg = QtWidgets.QDialog()
+
+        self.layout.addWidget(self.comboBox)
+        self.comboBox.addItem("Navy")
+        self.comboBox.addItem("Gray")
+        self.comboBox.addItem("Blue")
+        x = self.comboBox.currentText()
+        ssh_file = "/home/brickyard314/PycharmProjects/derby_runner/derby_runner/style_gray.css"
+        fh_style = open(ssh_file, "r").read()
+        MainWindow.setStyleSheet(fh_style)
+        if x == 'Gray':
+            ssh_file = "/home/brickyard314/PycharmProjects/derby_runner/derby_runner/style_gray.css"
+            with open(ssh_file, "r") as fh:
+                MainWindow.setStyleSheet(fh.read())
+        elif x == 'Blue':
+            print('blue is the sky')
+            ssh_file = "/home/brickyard314/PycharmProjects/derby_runner/derby_runner/style_blue.css"
+            with open(ssh_file, "r") as fh:
+                MainWindow.setStyleSheet(fh.read())
+        else:
+            print('it is just dark')
+
+        dlg.setGeometry(1000, 1000, 500, 500)
+        dlg.setLayout(self.layout)
+        dlg.exec()
+
+    def new_event(self):
+
+        self.df_units = dru.init_units(self)
+        self.df_stations = dru.init_stations(self)
+        self.df_waypoints = dru.init_waypoints(self)
+        self.df_courses = dru.init_courses(self)
+        self.df_coursepoints = dru.init_coursepoints(self)
+        self.df_adults = dru.init_adults(self)
+        self.df_youths = dru.init_youths(self)
+        self.df_itineraries = dru.init_itineraries(self)
+        self.df_schedules = dru.init_schedules(self)
+        self.df_squads = dru.init_squads(self)
+
+    def save_file_dialog(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        self.fileName, _ = QFileDialog.getOpenFileName(self,
-                                                       caption="Open File",
-                                                       directory= "../resources/",
-                                                       filter="All Files (*);;Python Files (*.py)",
-                                                       options=options)
-        if self.fileName[0]:
-            self.df_events = pandas.read_hdf(self.fileName, key="events")
-#            print(df_events)
-            self.model = pandasModel(self.df_events)
-            self.table.setModel(self.model)
-            self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-            self.setCentralWidget(self.table)
+        x = QFileDialog()
+        file_name, _ = x.getSaveFileName(caption="Caption", filter="H5F Files (*.h5);;All Files (*)", options=options)
+        file_name = file_name + ".h5"
+        if file_name:
+            self.df_stations.to_hdf(file_name, key='stations', mode='w')
+            self.df_waypoints.to_hdf(file_name, key='waypoints', mode='a')
+            self.df_courses.to_hdf(file_name, key='courses', mode='a')
+            self.df_coursepoints.to_hdf(file_name, key='coursepoints', mode='a')
+            self.df_units.to_hdf(file_name, key='units', mode='a')
+            self.df_squads.to_hdf(file_name, key='squads', mode='a')
+            self.df_itineraries.to_hdf(file_name, key='itineraries', mode='a')
+            self.df_schedules.to_hdf(file_name, key='schedules', mode='a')
+            self.df_youths.to_hdf(file_name, key='youths', mode='a')
+            self.df_adults.to_hdf(file_name, key='adults', mode='a')
 
-    def saveFileDialog(self,):
+    def open_filename_dialog(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        self.fileName, _ = QFileDialog.getSaveFileName(self, 'Save File', '../resources/', "Python Files (*.py);;All Files (*)",
-                                               options=QFileDialog.DontUseNativeDialog)
-        if self.fileName[0]:
-            self.df_events = self.df_events.astype(str)
-            self.df_events.to_hdf(self.fileName, key='events', mode='w')
-            return 0
+        x = QFileDialog()
+        file_name, _ = x.getOpenFileName(caption="Caption", filter="H5F Files (*.h5);;All Files (*)",
+                                         options=options)
+        if file_name:
+            self.df_stations = pd.read_hdf(file_name, key='stations', mode='r')
+            self.df_waypoints = pd.read_hdf(file_name, key='waypoints', mode='r')
+            self.df_courses = pd.read_hdf(file_name, key='courses', mode='r')
+            self.df_coursepoints = pd.read_hdf(file_name, key='coursepoints', mode='r')
+            self.df_schedules = pd.read_hdf(file_name, key='schedules', mode='r')
+            self.df_itineraries = pd.read_hdf(file_name, key='itineraries', mode='r')
+            self.df_units = pd.read_hdf(file_name, key='units', mode='r')
+            self.df_squads = pd.read_hdf(file_name, key='squads', mode='r')
+            self.df_youths = pd.read_hdf(file_name, key='youths', mode='r')
 
-if __name__ == "__main__":
-    app = Wid.QApplication(sys.argv)
-    ex = Window()
-    sys.exit(app.exec_())
+            self.view_waypoints()
+
+    def view_stations(self):
+        self.setup_table(self.df_stations)
+        return
+
+    def view_waypoints(self):
+        self.setup_table(self.df_waypoints)
+        return
+
+    def view_courses(self):
+        self.setup_table(self.df_courses)
+        return
+
+    def view_coursepoints(self):
+        self.setup_table(self.df_coursepoints)
+        return
+
+    def view_units(self):
+        self.setup_table(self.df_units)
+        return
+
+    def view_squads(self):
+        self.setup_table(self.df_squads)
+        return
+
+    def view_adults(self):
+        self.setup_table(self.df_adults)
+        return
+
+    def view_youths(self):
+        self.setup_table(self.df_youths)
+        return
+
+    def view_schedules(self):
+        self.setup_table(self.df_schedules)
+        return
+
+    def view_itineraries(self):
+        self.setup_table(self.df_itineraries)
+        return
+
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    splash = SplashScreen()
+    splash.show()
+    app.exec()
