@@ -1,0 +1,131 @@
+QWidget {
+    background: #202124;
+    color: #e4e7eb;
+    selection-background-color: #8ab4f7;
+    selection-color: #202124;
+}
+QWidget:disabled {
+    color: #697177;
+    selection-background-color: #53575b;
+    selection-color: #697177;
+}
+QWidget {
+    backward-icon: url(${path}/themes/dark/svg/arrow_upward__icon-foreground__rotate-270.svg);
+    forward-icon: url(${path}/themes/dark/svg/arrow_upward__icon-foreground__rotate-90.svg);
+    leftarrow-icon: url(${path}/themes/dark/svg/arrow_upward__icon-foreground__rotate-270.svg);
+    rightarrow-icon: url(${path}/themes/dark/svg/arrow_upward__icon-foreground__rotate-90.svg);
+    dialog-ok-icon: url(${path}/themes/dark/svg/check__icon-foreground.svg);
+    dialog-cancel-icon: url(${path}/themes/dark/svg/close__icon-foreground.svg);
+    dialog-yes-icon: url(${path}/themes/dark/svg/check_circle__icon-foreground.svg);
+    dialog-no-icon: url(${path}/themes/dark/svg/cancel__icon-foreground.svg);
+    dialog-apply-icon: url(${path}/themes/dark/svg/check__icon-foreground.svg);
+    dialog-reset-icon: url(${path}/themes/dark/svg/restart_alt__icon-foreground.svg);
+    dialog-save-icon: url(${path}/themes/dark/svg/save__icon-foreground.svg);
+    dialog-discard-icon: url(${path}/themes/dark/svg/delete__icon-foreground.svg);
+    dialog-close-icon: url(${path}/themes/dark/svg/close__icon-foreground.svg);
+    dialog-open-icon: url(${path}/themes/dark/svg/folder_open__icon-foreground.svg);
+    dialog-help-icon: url(${path}/themes/dark/svg/help__icon-foreground.svg);
+    filedialog-parent-directory-icon: url(${path}/themes/dark/svg/arrow_upward__icon-foreground.svg);
+    filedialog-new-directory-icon: url(${path}/themes/dark/svg/create_new_folder__icon-foreground.svg);
+    titlebar-close-icon: url(${path}/themes/dark/svg/close__icon-foreground.svg);
+    titlebar-normal-icon: url(${path}/themes/dark/svg/flip_to_front__icon-foreground.svg);
+}
+QCommandLinkButton {
+    qproperty-icon: url(${path}/themes/dark/svg/east__highlight.svg);
+}
+QMainWindow::separator {
+    width: 4px;
+    height: 4px;
+    background: #3f4042;
+}
+QMainWindow::separator:hover {
+    background: #8ab4f7;
+}
+QMainWindow::separator:pressed {
+    background: #8ab4f7;
+}
+QToolTip {
+    background: #292a2d;
+    color: #e4e7eb;
+    border: 1px solid #3f4042;
+}
+QSizeGrip {
+    width: 0;
+    height: 0;
+    image: none;
+}
+QStatusBar {
+    background: #2a2b2e;
+}
+QStatusBar::item {
+    border: none;
+}
+QStatusBar QWidget {
+    background: transparent;
+    padding: 3px;
+    border-radius: 4px;
+}
+QStatusBar > .QSizeGrip {
+    padding: 0;
+}
+QStatusBar QWidget:hover {
+    background: #44464a;
+}
+QStatusBar QWidget:pressed {
+    background: #4f5054;
+}
+QStatusBar QWidget:disabled {
+    background: #202124;
+}
+QStatusBar QWidget:checked {
+    background: #4f5054;
+}
+QCheckBox,
+QRadioButton {
+    border-top: 2px solid transparent;
+    border-bottom: 2px solid transparent;
+}
+QCheckBox:!window,
+QRadioButton:!window {
+    background: transparent;
+}
+QCheckBox:hover,
+QRadioButton:hover {
+    border-bottom: 2px solid #8ab4f7;
+}
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid #3f4042;
+    border-radius: 4px;
+    margin-top: 8px;
+    padding: 2px 1px 1px 1px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 7px;
+    margin: 0 2px 0 3px;
+}
+QGroupBox:flat {
+    border-color: transparent;
+}
+QMenuBar {
+    background: #202124;
+    padding: 4px;
+    margin-right: 8px;
+    border-bottom: 1px solid #3f4042;
+}
+QMenuBar::item {
+    background: transparent;
+    padding: 4px;
+}
+QMenuBar::item:selected {
+    padding: 4px;
+    background: #44464d;
+    border-radius: 4px;
+}
+QMenuBar::item:pressed {
+    padding: 4px;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
