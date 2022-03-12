@@ -1,29 +1,48 @@
 import sys
-import time
-import datetime
-import dr_utils as dru
-import pandas as pd
 import numpy as np
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt, QSize, QTimer
+import pandas as pd
+import dr_utils as dru
+from PyQt5 import QtGui, QtWidgets, QtCore
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from PyQt5.QtWebEngineWidgets import QWebEngineView
-from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QFileDialog, QVBoxLayout, QLabel, QFrame,
-    QApplication, QToolBar, QAction, QMenuBar, QSplitter, QProgressBar
-)
-import atexit
-from PyQt5.QtWidgets import QMainWindow, QSizePolicy, QWidget
-from PyQt5 import QtCore
-
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PIL import Image
+import atexit
 
+
+# ############################################################################
+def goodbye(data):
+    """
+    A simple static function used for development and testing
+    :param data:
+    :return:
+    """
+    print(data)
+    print('Goodbye')
+
+
+# ###############################################################33#############
 class PlotCanvas(FigureCanvas):
+    """
+    A class to handle plotting stations, waypoints and courses for Derby Runner
 
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        fig = Figure(figsize=(width, height), dpi=dpi)
+    Attributes
+    ----------
+    :fig: matplotlib Figure
+        fig acts as the overall driver, holding the .png image and also plotting
+        the stations, waypoints and courses
+
+    Methods
+    -------
+    plot(self):
+        description        .
+    """
+
+    def __init__(self, parent=None, cnv_width=5, cnv_height=4, dpi=100):
+        fig = Figure(figsize=(cnv_width, cnv_height), dpi=dpi)
         FigureCanvas.__init__(self, fig)
         self.setParent(parent)
         FigureCanvas.setSizePolicy(self,
@@ -34,22 +53,52 @@ class PlotCanvas(FigureCanvas):
 
     def plot(self):
         self.draw()
+
+
 # ##############################################################################
-# CLASS Color - test widget
+# CLASS Color - test widget that acts as a placeholder in layouts to facilitate
+#               design, development and testing, but ultimately is not meant for
+#               actual "production" version
 # ##############################################################################
 class Color(QWidget):
-
     def __init__(self, color):
         super(Color, self).__init__()
         self.setAutoFillBackground(True)
-
         palette = self.palette()
         palette.setColor(QPalette.Window, QColor(color))
         self.setPalette(palette)
 
+
 ###############################################################################################
 class NewModel(QtCore.QAbstractTableModel):
-    def __init__(self, data: object) -> object:
+    """
+    NewModel is meant to take a pandas DataFrame and be the mechanism whereby
+    that DataFrame can be presented to the user via the QTableView widget.
+
+    Attributes
+    ----------
+    data : pandas DataFrame
+        This takes any of the various pandas dataframes that hold the
+        Derby Runner data and then allows for generic processing of
+        those data frames.  It is introduced in a "hint", data: pd.DataFrame,
+        so that NewModel code can leverage pandas DataFrame functions and methods
+        without being flagged as a warning for being applied to an object which
+        is what it would be treated as otherwise.
+
+    Methods
+    -------
+    flags(self):
+        description
+    data(self, index, role):
+    setData(self, index, value, role=Qt.DisplayRole, **kwargs):
+    rowCount(self, index=QtCore.QModelIndex()) -> int:
+    columnCount(self, index=QtCore.QModelIndex()) -> int:
+    headerData(self, section, orientation, role=Qt.DisplayRole):
+    """
+
+    data: pd.DataFrame
+
+    def __init__(self, data: pd.DataFrame):
         super(NewModel, self).__init__()
         self.data = data
 
@@ -57,9 +106,10 @@ class NewModel(QtCore.QAbstractTableModel):
         return QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
 
     def data(self, index, role=Qt.DisplayRole):
-        if role == Qt.DisplayRole or role == Qt.EditRole:
-            value = self.data.iloc[index.row(), index.column()]
-            return str(value)
+        if role != Qt.DisplayRole and role != Qt.EditRole:
+            return
+        value = self.data.iloc[index.row(), index.column()]
+        return str(value)
 
     def setData(self, index, value, role=Qt.DisplayRole, **kwargs):
         if role == Qt.EditRole:
@@ -70,7 +120,6 @@ class NewModel(QtCore.QAbstractTableModel):
             value = self.data.iloc[index.row(), index.column()]
             print("contents = " + str(value))
             return True
-        return False
 
     def rowCount(self, index=QtCore.QModelIndex()) -> int:
         return self.data.shape[0]
@@ -89,12 +138,33 @@ class NewModel(QtCore.QAbstractTableModel):
 
 ##############################################################################################
 class Delegate(QtWidgets.QItemDelegate):
+    """
+    Delegate is used in conjunction with NewModel and QTableView to facilitate
+    more complicated editing functions such as combo boxes, input data masks
+    and data checking.
+
+    Attributes
+    ----------
+    :choices: list of elements to be used in the combo box
+    :self.editor: QtWidgets.QComboBox
+        This takes .
+
+    Methods
+    -------
+    createEditor(self, parent, option, index):
+        description
+    paint(self, painter, option, index):
+    setEditorData(self, editor, index):
+    setModelData(self, editor, model, index):
+    updateEditorGeometry(self, editor, option, index):
+    """
+
     def __init__(self, owner, choices):
         super().__init__(owner)
+        self.editor = QComboBox()
         self.items = choices
 
     def createEditor(self, parent, option, index):
-        self.editor = QtWidgets.QComboBox(parent)
         self.editor.addItems(self.items)
         return self.editor
 
@@ -119,12 +189,30 @@ class Delegate(QtWidgets.QItemDelegate):
     def updateEditorGeometry(self, editor, option, index):
         editor.setGeometry(option.rect)
 
+
+# ##############################################################################
 class PlainTextEditDelegate(QtWidgets.QItemDelegate):
+    """
+       PlainTextEditDelegate is used in conjunction with NewModel and QTableView to
+       for fields that would require a simple text editing function.
+
+       Attributes
+       ----------
+       :self.editor: QtWidgets.QPlainTextEdit()
+           This takes .
+
+       Methods
+       -------
+       createEditor(self, parent, option, index):
+           description
+       paint(self, painter, option, index):
+       """
+
     def __init__(self, owner):
         super().__init__(owner)
+        self.editor = QtWidgets.QPlainTextEdit()
 
     def createEditor(self, parent, option, index):
-        self.editor = QtWidgets.QPlainTextEdit(parent)
         return self.editor
 
     def paint(self, painter, option, index):
@@ -133,12 +221,8 @@ class PlainTextEditDelegate(QtWidgets.QItemDelegate):
         opt = QtWidgets.QPlainTextEdit()
         opt.text = str(value)
         opt.rect = option.rect
-        style.drawComplexControl( opt, painter)
+        style.drawComplexControl(opt, painter)
         QtWidgets.QItemDelegate.paint(self, painter, option, index)
-
-def goodbye(data):
-    print(data)
-    print('Goodbye')
 
 
 #######################################################################
@@ -160,22 +244,36 @@ class MainWindow(QtWidgets.QMainWindow):
     show_data():
         .
     """
+
     def __init__(self):
         super(MainWindow, self).__init__()
-        self.df_adults = None
-        self.df_coursepoints = None
-        self.df_courses = None
-        self.df_itineraries = None
-        self.df_schedules = None
-        self.df_stations = None
-        self.df_squads = None
-        self.df_units = None
-        self.df_waypoints = None
-        self.df_youths = None
+        self.df_settings: pd.DataFrame
+        self.df_adults: pd.DataFrame
+        self.df_coursepoints: pd.DataFrame
+        self.df_courses: pd.DataFrame
+        self.df_itineraries: pd.DataFrame
+        self.df_schedules: pd.DataFrame
+        self.df_stations: pd.DataFrame
+        self.df_squads: pd.DataFrame
+        self.df_units: pd.DataFrame
+        self.df_waypoints: pd.DataFrame
+        self.df_youths: pd.DataFrame
+        self.df_eveentoptions: pd.DataFrame
+        self.map_widget = PlotCanvas(self)
+        self.image = Image.open(str('/home/brickyard314/PycharmProjects/drv/resources/woodlake.png'), 'r')
+        # default map Upper Left = -85.78590, 41.86310 Lower Right = -85.76597, 41.85403
+        array_a = np.array([-85.77, -85.775, -85.777])
+        array_b = np.array([41.857, 41.859, 41.86 ])
+
+        ax = self.map_widget.figure.add_subplot(111)
+        ax.plot(array_a, array_b, 'o')
+        ax.set_xticks([-85.785, -85.780, -85.775, -85.770, -85.760])
+        ax.set_yticks([41.856, 41.858, 41.860, 41.862])
+        ax.imshow(self.image, extent=[-85.78590, -85.76597, 41.85403, 41.86310])
 
         dru.init_lists(self)
         self.new_event()
-
+        self.drsettings = './resources/drsettings.h5'
         self.current_filename = '[Untitled]'
         self.data_status = 'Unsaved'
         self.current_table = 'units'
@@ -193,18 +291,49 @@ class MainWindow(QtWidgets.QMainWindow):
             'font-size: 12pt; color: "black"; padding: 0px; margin: 0px; border: 0px solid #5CACEE;'
             'selection-background-color: #1B89CA; selection-color: #F0F0F0;')
         self.model = NewModel
-        self.mapwidget = PlotCanvas(self)
+
         self.layout_main.setContentsMargins(5, 5, 5, 5)
         self.layout_main.setSpacing(20)
         self.splitter_main.addWidget(self.splitter_data)
         self.splitter_main.addWidget(self.splitter_utils)
         self.layout_main.addWidget(self.splitter_main)
-
         self.setup_ui()
 
     def show_data(self):
+        """Used for development and testing"""
         print("show_data: ")
         print(self.df2)
+
+    def settings_dialog(self):
+        def getinfo():
+            self.df_settings.loc[0, 'file_onopen'] = dlg.file_name.text()
+            self.df_settings.loc[0, 'file_directory'] = dlg.dir_name.text()
+            print(self.df_settings)
+            dlg.close()
+
+        dlg = QDialog()
+        q_btn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        dlg.button_box = QDialogButtonBox(q_btn)
+        dlg.layout = QFormLayout()
+        dlg.file_name = QLineEdit()
+        message = QLabel("Hi there.")
+        message.setAlignment(QtCore.Qt.AlignLeft)
+        dlg.layout.addRow(message)
+        file_str = self.df_settings.loc[0, 'file_onopen']
+        if len(file_str) == 0: file_str = ' '
+        dlg.file_name = file_str
+        dlg.layout.addRow(QLabel("File to use at open: "), dlg.file_name)
+        dlg.dir_name = QLineEdit()
+        dlg.layout.addRow(QLabel("Derby Runner directory: "), dlg.dir_name)
+        dlg.button_box.accepted.connect(getinfo)
+        dlg.button_box.rejected.connect(dlg.reject)
+        dlg.layout.addWidget(dlg.button_box)
+        dlg.setLayout(dlg.layout)
+        dlg.setStyleSheet(
+            'font-size: 12pt; color: "black"; padding: 4px; margin: 2px; border: 1px solid #5CACEE;'
+            'selection-background-color: #1B89CA; selection-color: #F0F0F0;')
+        dlg.setGeometry(1200, 1200, 800, 600)
+        dlg.exec()
 
     def add_row(self):
         rows = sorted(set(index.row() for index in
@@ -212,8 +341,8 @@ class MainWindow(QtWidgets.QMainWindow):
         print(len(rows))
         for row in rows:
             print('Row %d is selected' % row)
-        #if no rows selected, add one row to the end
-        if (len(rows) == 0):
+        # if no rows selected, add one row to the end
+        if len(rows) == 0:
             unit_row = pd.DataFrame(columns=self.units_columns, index=[0])
             unit_row.fillna('  ', inplace=True)
             self.df_units = self.df_units.append(unit_row, ignore_index=True)
@@ -233,8 +362,8 @@ class MainWindow(QtWidgets.QMainWindow):
         for row in rows:
             print('Row %d is selected' % row)
 
-        #if no rows selected, popup "no rows selected"
-        #if 1 or more selected, delete rows selected
+        # if no rows selected, popup "no rows selected"
+        # if 1 or more selected, delete rows selected
 
     def copy_row(self):
         rows = sorted(set(index.row() for index in
@@ -243,36 +372,11 @@ class MainWindow(QtWidgets.QMainWindow):
         for row in rows:
             print('Row %d is selected' % row)
 
-        #if no rows selected, popup "no rows selected"
+        # if no rows selected, popup "no rows selected"
         # if 1 or more selected, copy to temp DF then add below last row
 
-    def settings_dialog(self):
-        dlg = QtWidgets.QDialog()
-        self.layout_main.addWidget(self.comboBox)
-        self.comboBox.addItem("Navy")
-        self.comboBox.addItem("Gray")
-        self.comboBox.addItem("Blue")
-        x = self.comboBox.currentText()
-        ssh_file = "/home/brickyard314/PycharmProjects/derby_runner/derby_runner/style_gray.css"
-        fh_style = open(ssh_file, "r").read()
-        MainWindow.setStyleSheet(fh_style)
-        if x == 'Gray':
-            ssh_file = "/home/brickyard314/PycharmProjects/derby_runner/derby_runner/style_gray.css"
-            with open(ssh_file, "r") as fh:
-                MainWindow.setStyleSheet(fh.read())
-        elif x == 'Blue':
-            print('blue is the sky')
-            ssh_file = "/home/brickyard314/PycharmProjects/derby_runner/derby_runner/style_blue.css"
-            with open(ssh_file, "r") as fh:
-                MainWindow.setStyleSheet(fh.read())
-        else:
-            print('it is just dark')
-
-        dlg.setGeometry(1000, 1000, 500, 500)
-        dlg.setLayout(self.layout_main)
-        dlg.exec()
-
     def new_event(self):
+        self.df_settings = dru.init_settings(self)
         self.df_units = dru.init_units(self)
         self.df_stations = dru.init_stations(self)
         self.df_waypoints = dru.init_waypoints(self)
@@ -283,13 +387,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.df_itineraries = dru.init_itineraries(self)
         self.df_schedules = dru.init_schedules(self)
         self.df_squads = dru.init_squads(self)
+        self.df_eveentoptions = dru.init_eventoptions(self)
 
     def save_file_dialog(self):
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
         x = QFileDialog()
-        file_name, _ = x.getSaveFileName(caption="Caption", filter="H5F Files (*.h5);;All Files (*)", options=options)
-        file_name = file_name
+        x.setGeometry(500, 500, 1000, 1500)
+        file_name, _ = x.getSaveFileName(caption="Caption", directory="/home/brickyard314/DerbyRunner",
+                                         filter="H5F Files (*.h5);;All Files (*)")
         if file_name:
             self.df_stations.to_hdf(file_name, key='stations', mode='w')
             self.df_waypoints.to_hdf(file_name, key='waypoints', mode='a')
@@ -301,18 +405,18 @@ class MainWindow(QtWidgets.QMainWindow):
             self.df_schedules.to_hdf(file_name, key='schedules', mode='a')
             self.df_youths.to_hdf(file_name, key='youths', mode='a')
             self.df_adults.to_hdf(file_name, key='adults', mode='a')
-
+            self.df_eveentoptions.to_hdf(file_name, key='options', mode='a')
+        self.df_settings.to_hdf(self.drsettings, key='settings', mode='a')
         self.current_filename = file_name
         return
 
     def open_filename_dialog(self):
         x = QFileDialog()
         x.setGeometry(500, 500, 1000, 1500)
-
-        file_name, _ = x.getOpenFileName(caption="Open Derby Runner files",
+        self.df_eveentoptions: pd.DataFrame
+        file_name, _ = x.getOpenFileName(caption="Open Derby Runner files", directory="/home/brickyard314/DerbyRunner",
                                          filter="H5F Files (*.h5);;All Files (*)")
         if file_name:
-
             self.df_stations = pd.read_hdf(file_name, key='stations', mode='r')
             self.df_waypoints = pd.read_hdf(file_name, key='waypoints', mode='r')
             self.df_courses = pd.read_hdf(file_name, key='courses', mode='r')
@@ -323,10 +427,28 @@ class MainWindow(QtWidgets.QMainWindow):
             self.df_squads = pd.read_hdf(file_name, key='squads', mode='r')
             self.df_youths = pd.read_hdf(file_name, key='youths', mode='r')
             self.df_adults = pd.read_hdf(file_name, key='adults', mode='r')
+            self.df_eveentoptions = pd.read_hdf(file_name, key='options', mode='r')
+            self.df_settings = pd.read_hdf(self.drsettings, key='settings', mode='r')
             self.change_model('units')
+            map_name = self.df_eveentoptions.loc[0, 'map_open']
+            print("Map: " + map_name)
+            self.image = Image.open(str('/home/brickyard314/DerbyRunner/map.png'), 'r')
             self.table.resizeColumnsToContents()
-
         self.current_filename = file_name
+        return
+
+    def import_map_dialog(self):
+        # for reference, get maps from https://www.openstreetmap.org/
+        # for instructions https://towardsdatascience.com/simple-gps-data-visualization-using-python-and-open-street-maps-50f992e9b676
+
+        x = QFileDialog()
+        x.setGeometry(500, 500, 1000, 1500)
+
+        file_name, _ = x.getOpenFileName(caption="Open image files",
+                                         filter="Image Files (*.png);;All Files (*)")
+        if file_name:
+            self.image = Image.open(file_name, 'r')
+            self.df_eveentoptions.loc[0, 'map_open'] = file_name
         return
 
     def change_model(self, table_name):
@@ -388,26 +510,18 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.table.resizeColumnsToContents()
         return
-
+    # SETUP UI #################################################################
     def setup_ui(self):
-        '''Assembles all of the pieces for the Main Window'''
+        """Assembles all the pieces for the Main Window"""
 
         data2 = [['10', 'Alex'], ['12', 'Bob'], ['13', 'Clarke']]
         self.df2 = pd.DataFrame(data2, columns=['Age', 'Name'])
-        arrayA = np.array([-75.42579, -75.42947, -75.42807])
-        arrayB = np.array([40.3662, 40.36383, 40.36088])
-        image = Image.open('/home/brickyard314/DerbyRunner/map.png', 'r')  # Load map image.
 
-        ax = self.mapwidget.figure.add_subplot(111)
-        ax.plot(arrayA, arrayB, 'o')
-        ax.set_xticks([-75.42, -75.425, -75.43])
-        ax.set_yticks([40.36, 40.365, 40.37])
-        im = ax.imshow(image, extent=[-75.42, -75.43, 40.36, 40.37])
 
         if self.current_table == 'adults':
             print("Adults")
         elif self.current_table == 'units':
-            choices =  self.unit_types
+            choices = self.unit_types
             self.model = NewModel(self.df_units)
         else:
             choices = ['Alex', 'Bob', 'Clarke', 'Ship', 'Troop', 'Other']
@@ -415,8 +529,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.table.setModel(self.model)
 
-        ### TOOL BAR ############################################################
-        #Qt themes work on all platforms, it's just that on Linux you get the theme for free.
+        # TOOL BAR ############################################################
+        # Qt themes work on all platforms, it's just that on Linux you get the theme for free.
         # On non-Linux platforms you have to define your own icon theme from scratch.
         # However, this is only really worth doing if you want to have a Linux-native look,
         # for other use cases the QResource system is simpler.
@@ -426,18 +540,18 @@ class MainWindow(QtWidgets.QMainWindow):
         paste_icon = QtGui.QIcon.fromTheme("edit-paste")
         delete_icon = QtGui.QIcon.fromTheme("edit-delete")
         insert_icon = QtGui.QIcon.fromTheme("list-add")
-        #Select Row .../table-select-row
-        #import_icon = QtGui.QIcon.fromTheme("")
-        #Export ".../document-export.png
+        # Select Row .../table-select-row
+        # import_icon = QtGui.QIcon.fromTheme("")
+        # Export ".../document-export.png
         icon = QtGui.QIcon.fromTheme("document-new")
         button1_action = QAction(cut_icon, "Cut Row", self)
         button1_action.setCheckable(False)
 
         self.data_tools.addAction(button1_action)
-        button2_action = QAction(copy_icon,"Copy Row", self)
+        button2_action = QAction(copy_icon, "Copy Row", self)
         button2_action.setCheckable(False)
         self.data_tools.addAction(button2_action)
-        button3_action = QAction(paste_icon,"Paste Row", self)
+        button3_action = QAction(paste_icon, "Paste Row", self)
         button3_action.setCheckable(False)
         self.data_tools.addAction(button3_action)
         button4_action = QAction(delete_icon, "Delete Row", self)
@@ -451,27 +565,26 @@ class MainWindow(QtWidgets.QMainWindow):
             'font-size: 12pt; color: "black"; padding: 4px; margin: 2px; border: 1px solid #5CACEE;'
             'selection-background-color: #1B89CA; selection-color: #F0F0F0;')
 
-        ### MENU BAR ############################################################
+        # MENU BAR ############################################################
         self.menu_bar.setStyleSheet(
             'font-size: 12pt; color: "black"; padding: 4px; margin: 2px; border: 1px solid #5CACEE;'
             'selection-background-color: #1B89CA; selection-color: #F0F0F0;')
-        file_icon  = QtGui.QIcon.fromTheme("system-file-manager")
-        new_icon  = QtGui.QIcon.fromTheme("document-new")
-        open_icon  = QtGui.QIcon.fromTheme("document-open")
-        save_icon  = QtGui.QIcon.fromTheme("document-save")
-        settings_icon  = QtGui.QIcon.fromTheme("preferences-other")
-        find_icon  = QtGui.QIcon.fromTheme("edit-find")
-        findrepl_icon  = QtGui.QIcon.fromTheme("edit-find-replace")
-        about_icon  = QtGui.QIcon.fromTheme("help-about")
-        adult_icon  = QtGui.QIcon.fromTheme("/home/brickyard314/.icons/flaticon/professor.png")
-        youth_icon  = QtGui.QIcon.fromTheme("/home/brickyard314/.icons/flaticon/cyberpunk.png")
+        file_icon = QtGui.QIcon.fromTheme("system-file-manager")
+        new_icon = QtGui.QIcon.fromTheme("document-new")
+        open_icon = QtGui.QIcon.fromTheme("document-open")
+        save_icon = QtGui.QIcon.fromTheme("document-save")
+        settings_icon = QtGui.QIcon.fromTheme("preferences-other")
+        find_icon = QtGui.QIcon.fromTheme("edit-find")
+        findrepl_icon = QtGui.QIcon.fromTheme("edit-find-replace")
+        about_icon = QtGui.QIcon.fromTheme("help-about")
+        adult_icon = QtGui.QIcon.fromTheme("/home/brickyard314/.icons/flaticon/professor.png")
+        youth_icon = QtGui.QIcon.fromTheme("/home/brickyard314/.icons/flaticon/cyberpunk.png")
         station_icon = QtGui.QIcon("/home/brickyard314/.icons/flaticon/placeholder.png")
         route_icon = QtGui.QIcon("/home/brickyard314/.icons/flaticon/route.png")
-        waypoint_icon =QtGui.QIcon("/home/brickyard314/.icons/flaticon/flag.png")
-        faq_icon  = QtGui.QIcon.fromTheme("help-faq")
+        waypoint_icon = QtGui.QIcon("/home/brickyard314/.icons/flaticon/flag.png")
+        faq_icon = QtGui.QIcon.fromTheme("help-faq")
 
         file_menu = self.menu_bar.addMenu('&File')
-
         new_act = file_menu.addAction(new_icon, '&New')
         new_act.setShortcut('Ctrl+N')
         new_act.setStatusTip('Create New Event')
@@ -502,7 +615,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         settings_act = file_menu.addAction(settings_icon, 'Settings')
         settings_act.setStatusTip('Edit how Derby Runner looks and works')
-        # settings_act.triggered.connect(self.settings_dialog)
+        settings_act.triggered.connect(self.settings_dialog)
         file_menu.addAction(settings_act)
 
         edit_menu = self.menu_bar.addMenu('&Edit')
@@ -527,79 +640,93 @@ class MainWindow(QtWidgets.QMainWindow):
         adults_act.setShortcut('Ctrl+A')
         adults_act.setStatusTip('Switch to Adults Table')
         view_menu.addAction(adults_act)
-        adults_act.triggered.connect(lambda  : self.change_model('adults'))
+        adults_act.triggered.connect(lambda: self.change_model('adults'))
 
         youths_act = view_menu.addAction(youth_icon, '&Youths')
         youths_act.setShortcut('Ctrl+Y')
         youths_act.setStatusTip('Switch to Youths Table')
         view_menu.addAction(youths_act)
-        youths_act.triggered.connect(lambda  : self.change_model('youths'))
+        youths_act.triggered.connect(lambda: self.change_model('youths'))
 
         waypoints_act = view_menu.addAction(waypoint_icon, '&Waypoints')
         waypoints_act.setShortcut('Ctrl+W')
         waypoints_act.setStatusTip('Switch to Waypoints Table')
         view_menu.addAction(waypoints_act)
-        waypoints_act.triggered.connect(lambda : self.change_model('waypoints'))
+        waypoints_act.triggered.connect(lambda: self.change_model('waypoints'))
 
         stations_act = view_menu.addAction(station_icon, '&Stations')
         stations_act.setShortcut('Ctrl+S')
         stations_act.setStatusTip('Switch to Stations Table')
         view_menu.addAction(stations_act)
-        stations_act.triggered.connect(lambda : self.change_model('stations'))
+        stations_act.triggered.connect(lambda: self.change_model('stations'))
 
         courses_act = view_menu.addAction('&Courses')
         courses_act.setShortcut('Ctrl+C')
         courses_act.setStatusTip('Switch to Courses Table')
         view_menu.addAction(courses_act)
-        courses_act.triggered.connect(lambda : self.change_model('courses'))
+        courses_act.triggered.connect(lambda: self.change_model('courses'))
 
         coursepoints_act = view_menu.addAction(route_icon, 'Course &Points')
         coursepoints_act.setShortcut('Ctrl+P')
         coursepoints_act.setStatusTip('Switch to Coursepoints Table')
         view_menu.addAction(coursepoints_act)
-        coursepoints_act.triggered.connect(lambda : self.change_model('coursepoints'))
+        coursepoints_act.triggered.connect(lambda: self.change_model('coursepoints'))
 
         units_act = view_menu.addAction('&Units')
         units_act.setShortcut('Ctrl+U')
         units_act.setStatusTip('Switch to Units Table')
         view_menu.addAction(units_act)
-        units_act.triggered.connect(lambda : self.change_model('units'))
+        units_act.triggered.connect(lambda: self.change_model('units'))
 
         squads_act = view_menu.addAction('S&quads')
         squads_act.setShortcut('Ctrl+Q')
         squads_act.setStatusTip('Switch to Squads Table')
         view_menu.addAction(squads_act)
-        squads_act.triggered.connect(lambda : self.change_model('squads'))
+        squads_act.triggered.connect(lambda: self.change_model('squads'))
 
         schedules_act = view_menu.addAction('Sc&hedules')
         schedules_act.setShortcut('Ctrl+H')
         schedules_act.setStatusTip('Switch to Schedules Table')
         view_menu.addAction(schedules_act)
-        schedules_act.triggered.connect(lambda : self.change_model('schedules'))
+        schedules_act.triggered.connect(lambda: self.change_model('schedules'))
 
         itineraries_act = view_menu.addAction('&Itineraries')
         itineraries_act.setShortcut('Ctrl+I')
         itineraries_act.setStatusTip('Switch to Itineraries Table')
         view_menu.addAction(itineraries_act)
-        itineraries_act.triggered.connect(lambda : self.change_model('itineraries'))
+        itineraries_act.triggered.connect(lambda: self.change_model('itineraries'))
 
+        # MAPS MENU ############################################################
         maps_menu = self.menu_bar.addMenu('&Maps')
+        import_map = maps_menu.addAction('&Import')
+        import_map.setShortcut('Ctrl+I')
+        import_map.setStatusTip('Find image to use for map')
+        maps_menu.addAction(import_map)
+        import_map.triggered.connect(self.import_map_dialog)
+
+        settings_map =maps_menu.addAction('&Coordinates')
+        maps_menu.addAction(settings_map)
+
         scores_menu = self.menu_bar.addMenu('Scoreboard')
+        new_scores = scores_menu.addAction('&New')
+        scores_menu.addAction(new_scores)
+
         help_menu = self.menu_bar.addMenu('&Help')
         about_act = help_menu.addAction(about_icon, '&About')
         about_act.setShortcut('Ctrl+A')
         about_act.setStatusTip('About Derby Runner')
         help_menu.addAction(about_act)
-#        about_act.triggered.connect(help_about)
+        #        about_act.triggered.connect(help_about)
 
         self.menu_bar.adjustSize()
         self.setMenuBar(self.menu_bar)
         # #UTILITIES ##########################
-        widget1 = Color('red')
-        widget1.setFixedHeight(400)
+        widget1 = Color('green')
+        widget1.setFixedHeight(200)
         widget2 = QtWidgets.QCalendarWidget()
+        widget2.setStyleSheet('font-size: 12pt; color: "black"; padding: 4px; ')
 
-        widget1.setGeometry(QtCore.QRect(0, 0, 400, 800))
+        widget1.setGeometry(QtCore.QRect(0, 0, 200, 800))
         self.splitter_data.setGeometry(QtCore.QRect(5, 9, 600, 600))
         self.data_tools.setGeometry(QtCore.QRect(0, 0, 800, 32))
         self.data_tools.setFixedHeight(55)
@@ -607,13 +734,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.splitter_utils.addWidget(widget1)
         self.splitter_utils.addWidget(widget2)
-        self.splitter_utils.addWidget(self.mapwidget)
+        self.splitter_utils.addWidget(self.map_widget)
         self.splitter_data.addWidget(self.data_tools)
         self.splitter_data.addWidget(self.table)
         widget = QWidget()
         widget.setLayout(self.layout_main)
         self.setCentralWidget(widget)
-
 
         atexit.register(goodbye, data=self.df2)
 
@@ -621,10 +747,10 @@ class MainWindow(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
-    t = 250
-    l = 350
-    w = 2500
-    h = 1500
-    window.setGeometry(QtCore.QRect(t, l, w, h))
+    top = 500
+    left = 1350
+    width = 2000
+    height = 1000
+    window.setGeometry(QtCore.QRect(top, left, width, height))
     window.show()
     app.exec_()

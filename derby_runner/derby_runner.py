@@ -14,10 +14,7 @@ from PyQt5.QtWidgets import (
 
 # ##############################################################################
 # CLASS Color - test widget
-#
 # ##############################################################################
-
-
 class Color(QWidget):
 
     def __init__(self, color):
@@ -30,6 +27,77 @@ class Color(QWidget):
 
 
 # ##############################################################################
+# CLASS Model - To translate data to object that feeds QTableView
+# ##############################################################################
+class NewModel(QtCore.QAbstractTableModel):
+    def __init__(self, data:object) -> object:
+        super(NewModel, self).__init__()
+        self.data = data
+
+    def flags(self, index):
+        return QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
+
+    def data(self, index, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole or role == Qt.EditRole:
+            value = self.data.iloc[index.row(), index.column()]
+            return str(value)
+
+    def setData(self, index, value, role=Qt.DisplayRole, **kwargs):
+        if role == Qt.EditRole:
+            self.data.iloc[index.row(), index.column()] = value
+            print("Value = " + str(value))
+            return True
+        else:
+            value = self.data.iloc[index.row(), index.column()]
+            print("contents = " + str(value))
+            return True
+        return False
+
+    def rowCount(self, index=QtCore.QModelIndex()) -> int:
+        return self.data.shape[0]
+
+    def columnCount(self, index=QtCore.QModelIndex()) -> int:
+        return self.data.shape[1]
+
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        # section is the index of the column/row.
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                return str(self.data.columns[section])
+            if orientation == Qt.Vertical:
+                return str(self.data.index[section])
+
+class Model(QtCore.QAbstractTableModel):
+    def __init__(self, table):
+        super().__init__()
+        self.table = table
+
+    def rowCount(self, parent):
+        return len(self.table)
+
+    def columnCount(self, parent):
+        return len(self.table[0])
+
+    def flags(self, index):
+        return QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
+
+    # def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...) :
+    #     if role == Qt.DisplayRole and orientation == Qt.Horizontal:
+    #         return self.head_labels[section]
+
+    def data(self, index, role):
+        if role == QtCore.Qt.DisplayRole:
+            return self.table[index.row()][index.column()]
+
+    def setData(self, index, value, role):
+        if role == QtCore.Qt.EditRole:
+            print("A change! " + str(value))
+            self.table[index.row()][index.column()] = value
+            print(self.table)
+        return True
+
+
+# ##############################################################################
 # CLASS CustomTableDelegate
 #
 # ##############################################################################
@@ -38,6 +106,7 @@ class CustomTableDelegate(QtWidgets.QStyledItemDelegate):
     def __init__(self, parent=None):
         super(CustomTableDelegate, self).__init__(parent)
         # self.setMouseTracking(True)
+
         self._mousePressAnchor = ''
         self._lastHoveredAnchor = ''
 
@@ -184,9 +253,11 @@ class WindowApp(QtWidgets.QMessageBox):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Welcome to Derby Runner v0.1")
-        self.setGeometry(1000, 600, 750, 500)
+        self.setGeometry(1000, 600, 1750, 500)
         self.setText("Derby Runner v0.1")
         self.setInformativeText("Copyright ©2022")
+        self.setIcon(QtWidgets.QMessageBox.Information)
+        self.setDetailedText("More to come...")
         self.show()
 
 
@@ -200,6 +271,44 @@ class DateEditDelegate(QtWidgets.QItemDelegate):
         else:
             editor.setStyleSheet("background-color: yellow; color: green;")
         return editor
+
+
+class LabelEditDelegate(QtWidgets.QItemDelegate):
+    def createEditor(self, widget, option, index):
+        editor = QtWidgets.QLabel(widget)
+        return editor
+
+
+class Delegate(QtWidgets.QItemDelegate):
+    def __init__(self, owner, choices):
+        super().__init__(owner)
+        self.items = choices
+
+    def createEditor(self, parent, option, index):
+        self.editor = QtWidgets.QComboBox(parent)
+        self.editor.addItems(self.items)
+        return self.editor
+
+    def paint(self, painter, option, index):
+        value = index.data(QtCore.Qt.DisplayRole)
+        style = QtWidgets.QApplication.style()
+        opt = QtWidgets.QStyleOptionComboBox()
+        opt.text = str(value)
+        opt.rect = option.rect
+        style.drawComplexControl(QtWidgets.QStyle.CC_ComboBox, opt, painter)
+        QtWidgets.QItemDelegate.paint(self, painter, option, index)
+
+    def setEditorData(self, editor, index):
+        value = index.data(QtCore.Qt.DisplayRole)
+        num = self.items.index(value)
+        editor.setCurrentIndex(num)
+
+    def setModelData(self, editor, model, index):
+        value = editor.currentText()
+        model.setData(index, QtCore.Qt.DisplayRole, QtCore.QVariant(value))
+
+    def updateEditorGeometry(self, editor, option, index):
+        editor.setGeometry(option.rect)
 
 
 class ComboBoxDelegate(QtWidgets.QItemDelegate):
@@ -241,36 +350,42 @@ def help_about():
     about_msg.exec_()
 
 
+def find_screen(self):
+    find_screen = QtWidgets.QApplication(sys.argv)
+    screen = find_screen.primaryScreen()
+    size = screen.size()
+    rect = screen.availableGeometry()
+    screen_width = rect.width()
+    screen_height = rect.height()
+    self.top = int(0.25 * screen_height)
+    self.left = int(0.25 * screen_width)
+    self.height = int(0.5 * screen_height)
+    self.width = int(0.5 * screen_width)
+
+    print('Screen: %s' % screen.name())
+    print('Size: %d x %d' % (size.width(), size.height()))
+    print('Available: %d x %d' % (rect.width(), rect.height()))
+    return
+
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
-        self.itinerary_columns = ['ItineraryID', 'Start\nStation']
-        self.schedules_columns = ['ScheduleID', 'Start', 'End', 'Note']
-        self.youths_columns = ['YouthID', 'First Name', 'Last Name', 'Email', 'Primary Phone', 'UnitID']
-        self.adults_columns = ['AdultID', 'First Name', 'Last Name', 'Email', 'Primary Phone', 'UnitID']
-        self.squads_columns = ['SquadID', 'SquadType', 'SquadName', 'UnitID', 'SquadLeaderID', 'ItineraryID']
-        self.units_columns = ['UnitID', 'UnitType', 'UnitNumber', 'Leader1ID', 'Leader2ID', 'Leader3ID',
-                              'ParticipateFlag', 'HostFlag', 'StationID']
-        self.coursepoint_columns = ['CourseID', 'StopType', 'StopID', 'NextStopType', 'NextStopID']
-        self.courses_columns = ['CourseID', 'cName', 'cDescription', 'FirstStopType', 'FirstStopID']
-        self.waypoints_columns = ['WaypointID', 'Name', 'Description', 'Longitude', 'Latitude']
-        self.stations_columns = ['StationID', 'Name', 'Description', 'TroopID', 'PrimaryAdultID', 'SecondaryAdultID',
-                                 'Longitude', 'Latitude']
-        self.df_units = dru.init_units(self)
-        self.df_stations = dru.init_stations(self)
-        self.df_waypoints = dru.init_waypoints(self)
-        self.df_courses = dru.init_courses(self)
-        self.df_coursepoints = dru.init_coursepoints(self)
-        self.df_adults = dru.init_adults(self)
-        self.df_youths = dru.init_youths(self)
-        self.df_itineraries = dru.init_itineraries(self)
-        self.df_schedules = dru.init_schedules(self)
-        self.df_squads = dru.init_squads(self)
+        dru.init_lists(self)
+        self.new_event()
+        self.current_table = 'units'
 
         self.layout = QtWidgets.QVBoxLayout()
         self.comboBox = QtWidgets.QComboBox()
         self.setWindowTitle("Derby Runner")
-        self.setGeometry(500, 500, 2000, 1000)
+
+        # find_screen(self)
+        t = 250
+        l = 350
+        w = 2500
+        h = 1500
+        self.setGeometry(l, t, w, h)
+
         self.main_window = QtWidgets.QMainWindow()
         self.central_widget = QtWidgets.QWidget(self.main_window)
         self.central_widget.setObjectName("central_widget")
@@ -278,42 +393,45 @@ class MainWindow(QtWidgets.QMainWindow):
         self.menu_bar.setStyleSheet("font-size: 12pt; padding: 5px; margin: 1px;")
         self.menu_bar.setObjectName("menu_bar")
         self.setMenuBar(self.menu_bar)
-        # # LAYOUTS ####################################################################
+        # # LAYOUTS ############################################################
         self.layout_main = QHBoxLayout()
         self.splitter_main = QSplitter(Qt.Horizontal)
         self.splitter_data = QSplitter(Qt.Vertical)
         self.splitter_utils = QSplitter(Qt.Vertical)
         self.splitter_data.setGeometry(QtCore.QRect(5, 9, 2200, 1100))
-
-        self.table_view = CustomTableView()
-        self.table_view.setMouseTracking(True)
-        self.table_view.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.table_view.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
-        self.model = QtGui.QStandardItemModel()
+        # # TABLE VIEW #########################################################
+        # self.table_view = CustomTableView()
+        self.table_view = QtWidgets.QTableView()
+        # create table data:
+        self.table = self.setup_table(self.df_units)
+        self.model = Model(self.table)
+        self.table_view = QtWidgets.QTableView()
         self.table_view.setModel(self.model)
-        self.table_view.setItemDelegate(CustomTableDelegate())
+
         date_delegate = DateEditDelegate(self)
-        self.table_view.setItemDelegateForColumn(3, date_delegate)
-        leader_list = ['Empty', 'Macron', 'Trudeau', 'Mandela', 'Churchill', 'Kobe', 'Lincoln']
+        label_delegate = LabelEditDelegate(self)
         combo_delegate = ComboBoxDelegate(self)
-        combo_delegate.set_items(leader_list)
-        self.table_view.setItemDelegateForColumn(4, combo_delegate)
-        for i in range(self.model.rowCount()):
-            self.table_view.openPersistentEditor(self.model.index(i, 4))
 
-        self.table_view.setStyleSheet("background-color: yellow;")
-
+        if self.current_table == 'units':
+            choices = ['Crew', 'Pack', 'Post', 'Ship', 'Troop', 'Other']
+            self.table_view.setItemDelegateForColumn(0, Delegate(self, choices))
+            for row in range(len(self.table)):
+                self.table_view.openPersistentEditor(self.model.index(row, 0))
+        print(self.table)
         self.setup_ui()
 
     def setup_ui(self):
         self.new_event()
         current_style = read_stylesheets()
-        MainWindow.setStyleSheet(self, current_style)
 
         h_lw = QtWidgets.QWidget(self.central_widget)
-        h_lw.setGeometry(QtCore.QRect(-1, 9, 2200, 1100))
-        print("200: setup started")
+        t = 250
+        l = 350
+        w = 2500
+        h = 1500
+        h_lw.setGeometry(QtCore.QRect(t, l, w, h))
         # MENU BAR ##############################################################
+
         file_menu = self.menu_bar.addMenu('&File')
 
         new_act = file_menu.addAction('&New')
@@ -335,7 +453,7 @@ class MainWindow(QtWidgets.QMainWindow):
         file_menu.addAction(save_act)
 
         export_act = file_menu.addAction('&Export')
-        #export_act.triggered.connect(self.export_dialog)
+        # export_act.triggered.connect(self.export_dialog)
         file_menu.addAction(export_act)
 
         saveall_act = file_menu.addAction('Save &All')
@@ -423,9 +541,10 @@ class MainWindow(QtWidgets.QMainWindow):
         help_menu.addAction(about_act)
         about_act.triggered.connect(help_about)
 
-        # #DATA ########################################################################
+        # #TOOL BAR ########################################################################
         data_tools = QToolBar()
         data_tools.setGeometry(QtCore.QRect(0, 0, 800, 32))
+        data_tools.setFixedHeight(45)
         data_tools.setIconSize(QSize(32, 32))
         self.splitter_data.addWidget(data_tools)
 
@@ -439,14 +558,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.splitter_data.addWidget(data_tools)
 
         header = self.table_view.horizontalHeader()
-        header.setStretchLastSection(True)
+        header.setStretchLastSection(False)
         vertical_header = self.table_view.verticalHeader()
         vertical_header.hide()
-
-        self.table_view.resizeColumnsToContents()
-        self.table_view.setStyleSheet(
-            'font-size: 11pt; color: "black"; border: 1px solid #5CACEE; selection-background-color: #1B89CA; '
-            'selection-color: #F0F0F0;')
         self.splitter_data.addWidget(self.table_view)
 
         # #UTILITIES ##########################
@@ -474,15 +588,25 @@ class MainWindow(QtWidgets.QMainWindow):
         widget = QWidget()
         widget.setLayout(self.layout_main)
         self.setCentralWidget(widget)
-
-        df_test = pd.DataFrame(columns=self.itinerary_columns, index=[0, 1, 2, 3, 4, 5])
-        df_test.fillna('Empty', inplace=True)
-        self.setup_table(self.df_units)
+        print(self.model)
+        # self.setup_table(self.df_units)
 
     def setup_table(self, data):
-        print("265: setup_table")
+        table = []
+        i = 0
+        for index, row in data.iterrows():
+            table.append(data.iloc[i].to_list())
+            i = i + 1
+        return table
+
+    def old_setup_table(self, data):
+        choices = ['Crew', 'Pack', 'Post', 'Ship', 'Troop', 'Other']
+
+        # table.append(self.df_units.iloc[0].to_list())
+        # table.append(self.df_units.iloc[1].to_list())
         column_labels = list(data)
         self.model.setHorizontalHeaderLabels(column_labels)
+
         i = 0
         for index, row in data.iterrows():
             j = 0
@@ -493,12 +617,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.model.setItem(i, j, QtGui.QStandardItem(item))
                 j = j + 1
             i = i + 1
-
         return
 
     def settings_dialog(self):
         dlg = QtWidgets.QDialog()
-
         self.layout.addWidget(self.comboBox)
         self.comboBox.addItem("Navy")
         self.comboBox.addItem("Gray")
@@ -524,7 +646,6 @@ class MainWindow(QtWidgets.QMainWindow):
         dlg.exec()
 
     def new_event(self):
-
         self.df_units = dru.init_units(self)
         self.df_stations = dru.init_stations(self)
         self.df_waypoints = dru.init_waypoints(self)
@@ -618,6 +739,9 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
-    splash = SplashScreen()
-    splash.show()
+
+    # splash = SplashScreen()
+    # splash.show()
     app.exec()
+    print("and the answer is")
+    print(window.table)
