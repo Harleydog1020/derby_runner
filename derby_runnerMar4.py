@@ -2,6 +2,9 @@ import sys
 import numpy as np
 import pandas as pd
 import dr_utils as dru
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 from PyQt5 import QtGui, QtWidgets, QtCore
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import Qt, QSize
@@ -11,20 +14,11 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PIL import Image
 import atexit
+from os.path import exists
+from pathlib import Path
 
 
 # ############################################################################
-def goodbye(data):
-    """
-    A simple static function used for development and testing
-    :param data:
-    :return:
-    """
-    print(data)
-    print('Goodbye')
-
-
-# ###############################################################33#############
 class PlotCanvas(FigureCanvas):
     """
     A class to handle plotting stations, waypoints and courses for Derby Runner
@@ -247,6 +241,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self):
         super(MainWindow, self).__init__()
+
         self.df_settings: pd.DataFrame
         self.df_adults: pd.DataFrame
         self.df_coursepoints: pd.DataFrame
@@ -259,11 +254,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.df_waypoints: pd.DataFrame
         self.df_youths: pd.DataFrame
         self.df_eveentoptions: pd.DataFrame
+        self.df_settings: pd.DataFrame
         self.map_widget = PlotCanvas(self)
         self.image = Image.open(str('/home/brickyard314/PycharmProjects/drv/resources/woodlake.png'), 'r')
         # default map Upper Left = -85.78590, 41.86310 Lower Right = -85.76597, 41.85403
         array_a = np.array([-85.77, -85.775, -85.777])
-        array_b = np.array([41.857, 41.859, 41.86 ])
+        array_b = np.array([41.857, 41.859, 41.86])
 
         ax = self.map_widget.figure.add_subplot(111)
         ax.plot(array_a, array_b, 'o')
@@ -299,6 +295,36 @@ class MainWindow(QtWidgets.QMainWindow):
         self.layout_main.addWidget(self.splitter_main)
         self.setup_ui()
 
+
+    def goodbye(self):
+        """
+        A simple function used to trap EXIT to prompt for save changes
+        :param :
+        :return:
+        """
+
+        dlg = QDialog(self)
+        q_btn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        dlg.button_box = QDialogButtonBox(q_btn)
+        dlg.layout = QFormLayout()
+        message = QLabel("Would you like to save changes first?")
+        message.setAlignment(QtCore.Qt.AlignLeft)
+        dlg.layout.addRow(message)
+
+        dlg.button_box.accepted.connect(self.save_file_dialog)
+        dlg.button_box.rejected.connect(dlg.reject)
+        dlg.layout.addWidget(dlg.button_box)
+        dlg.setLayout(dlg.layout)
+        dlg.setStyleSheet(
+            'font-size: 12pt; color: "black"; padding: 4px; margin: 2px; border: 1px solid #5CACEE;'
+            'selection-background-color: #1B89CA; selection-color: #F0F0F0;')
+        dlg.setGeometry(1200, 1200, 800, 600)
+        dlg.exec()
+        print('Goodbye')
+        dlg.close()
+
+    # ###############################################################33#############
+
     def show_data(self):
         """Used for development and testing"""
         print("show_data: ")
@@ -315,15 +341,18 @@ class MainWindow(QtWidgets.QMainWindow):
         q_btn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
         dlg.button_box = QDialogButtonBox(q_btn)
         dlg.layout = QFormLayout()
-        dlg.file_name = QLineEdit()
         message = QLabel("Hi there.")
         message.setAlignment(QtCore.Qt.AlignLeft)
         dlg.layout.addRow(message)
+
         file_str = self.df_settings.loc[0, 'file_onopen']
         if len(file_str) == 0: file_str = ' '
-        dlg.file_name = file_str
+        dlg.file_name = QLineEdit(file_str)
         dlg.layout.addRow(QLabel("File to use at open: "), dlg.file_name)
-        dlg.dir_name = QLineEdit()
+
+        dir_str = self.df_settings.loc[0, 'file_directory']
+        if len(file_str) == 0: dir_str = ' '
+        dlg.dir_name = QLineEdit(dir_str)
         dlg.layout.addRow(QLabel("Derby Runner directory: "), dlg.dir_name)
         dlg.button_box.accepted.connect(getinfo)
         dlg.button_box.rejected.connect(dlg.reject)
@@ -338,22 +367,72 @@ class MainWindow(QtWidgets.QMainWindow):
     def add_row(self):
         rows = sorted(set(index.row() for index in
                           self.table.selectedIndexes()))
-        print(len(rows))
-        for row in rows:
-            print('Row %d is selected' % row)
+
+        if self.current_table == 'stations':
+            df_columns = self.stations_columns
+        elif self.current_table == 'waypoints':
+            df_columns = self.waypoints_columns
+        elif self.current_table == 'units':
+            df_columns = self.units_columns
+        elif self.current_table == 'squads':
+            df_columns = self.squads_columns
+        elif self.current_table == 'coursepoints':
+            df_columns = self.coursepoint_columns
+        elif self.current_table == 'itineraries':
+            df_columns = self.itinerary_columns
+        elif self.current_table == 'schedules':
+            df_columns = self.schedules_columns
+        elif self.current_table == 'youths':
+            df_columns = self.youths_columns
+        elif self.current_table == 'adults':
+            df_columns = self.adults_columns
+        elif self.current_table == 'courses':
+            df_columns = self.courses_columns
+        else:
+            print("Unknown error #1 in ADD_ROW function")
+
         # if no rows selected, add one row to the end
         if len(rows) == 0:
-            unit_row = pd.DataFrame(columns=self.units_columns, index=[0])
-            unit_row.fillna('  ', inplace=True)
-            self.df_units = self.df_units.append(unit_row, ignore_index=True)
-            self.model = NewModel(self.df_units)
-            self.table.setModel(self.model)
+            new_row = pd.DataFrame(columns=df_columns, index=[0])
+            new_row.fillna('  ', inplace=True)
         else:
-            unit_row = pd.DataFrame(columns=self.units_columns, index=range(len(rows)))
-            unit_row.fillna('  ', inplace=True)
-            self.df_units = self.df_units.append(unit_row, ignore_index=True)
+            new_row = pd.DataFrame(columns=df_columns, index=range(len(rows)))
+            new_row.fillna('  ', inplace=True)
+
+        if self.current_table == 'stations':
+            self.df_stations = self.df_stations.append(new_row, ignore_index=True)
+            self.model = NewModel(self.df_stations)
+        elif self.current_table == 'waypoints':
+            self.df_waypoints = self.df_waypoints.append(new_row, ignore_index=True)
+            self.model = NewModel(self.df_waypoints)
+        elif self.current_table == 'units':
+            self.df_units = self.df_units.append(new_row, ignore_index=True)
             self.model = NewModel(self.df_units)
-            self.table.setModel(self.model)
+        elif self.current_table == 'squads':
+            self.df_squads = self.df_squads.append(new_row, ignore_index=True)
+            self.model = NewModel(self.df_squads)
+        elif self.current_table == 'coursepoints':
+            self.df_coursepoints = self.df_coursepoints.append(new_row, ignore_index=True)
+            self.model = NewModel(self.df_coursepoints)
+        elif self.current_table == 'itineraries':
+            self.df_itineraries = self.df_itineraries.append(new_row, ignore_index=True)
+            self.model = NewModel(self.df_itineraries)
+        elif self.current_table == 'schedules':
+            self.df_schedules = self.df_schedules.append(new_row, ignore_index=True)
+            self.model = NewModel(self.df_schedules)
+        elif self.current_table == 'youths':
+            self.df_youths = self.df_youths.append(new_row, ignore_index=True)
+            self.model = NewModel(self.df_youths)
+        elif self.current_table == 'adults':
+            self.df_adults = self.df_adults.append(new_row, ignore_index=True)
+            self.model = NewModel(self.df_adults)
+        elif self.current_table == 'courses':
+            self.df_courses = self.df_courses.append(new_row, ignore_index=True)
+            self.model = NewModel(self.df_courses)
+        else:
+            print("Unknown error #2 in ADD_ROW function")
+
+        self.table.setModel(self.model)
 
     def del_row(self):
         rows = sorted(set(index.row() for index in
@@ -408,6 +487,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.df_eveentoptions.to_hdf(file_name, key='options', mode='a')
         self.df_settings.to_hdf(self.drsettings, key='settings', mode='a')
         self.current_filename = file_name
+        print(self.df_eveentoptions)
         return
 
     def open_filename_dialog(self):
@@ -449,7 +529,57 @@ class MainWindow(QtWidgets.QMainWindow):
         if file_name:
             self.image = Image.open(file_name, 'r')
             self.df_eveentoptions.loc[0, 'map_open'] = file_name
+            array_a = np.array([-85.77, -85.775, -85.777])
+            array_b = np.array([41.857, 41.859, 41.86])
+            ax = self.map_widget.figure.add_subplot(111)
+            ax.plot(array_a, array_b, 'o')
+            ax.set_xticks([-85.785, -85.780, -85.775, -85.770, -85.760])
+            ax.set_yticks([41.856, 41.858, 41.860, 41.862])
+            ax.imshow(self.image, extent=[-85.78590, -85.76597, 41.85403, 41.86310])
         return
+
+    def map_settings(self):
+        def get_mapinfo():
+
+            self.df_eveentoptions.loc[0, 'north'] = dlg.north.text()
+            self.df_eveentoptions.loc[0, 'south'] = dlg.south.text()
+            self.df_eveentoptions.loc[0, 'east'] = dlg.east.text()
+            self.df_eveentoptions.loc[0, 'west'] = dlg.west.text()
+            dlg.close()
+
+        dlg = QDialog()
+        q_btn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        dlg.button_box = QDialogButtonBox(q_btn)
+        dlg.layout = QFormLayout()
+        message = QLabel("Enter Map Boundary Coordinates.")
+        message.setAlignment(QtCore.Qt.AlignLeft)
+        dlg.layout.addRow(message)
+
+        dlg.north = QLineEdit()
+        dlg.north.setValidator(QDoubleValidator(-180.99999, 180.99999, 6))
+        dlg.layout.addRow(QLabel("North Latitude: "), dlg.north)
+
+        dlg.south = QLineEdit()
+        dlg.south.setValidator(QDoubleValidator(-180.99999, 180.99999, 6))
+        dlg.layout.addRow(QLabel("South Latitude: "), dlg.south)
+
+        dlg.east = QLineEdit()
+        dlg.east.setValidator(QDoubleValidator(-180.99999, 180.99999, 6))
+        dlg.layout.addRow(QLabel("East Longitude: "), dlg.east)
+
+        dlg.west = QLineEdit()
+        dlg.west.setValidator(QDoubleValidator(-180.99999, 180.99999, 6))
+        dlg.layout.addRow(QLabel("West Longitude: "), dlg.west)
+
+        dlg.button_box.accepted.connect(get_mapinfo)
+        dlg.button_box.rejected.connect(dlg.reject)
+        dlg.layout.addWidget(dlg.button_box)
+        dlg.setLayout(dlg.layout)
+        dlg.setStyleSheet(
+            'font-size: 12pt; color: "black"; padding: 4px; margin: 2px; border: 1px solid #5CACEE;'
+            'selection-background-color: #1B89CA; selection-color: #F0F0F0;')
+        dlg.setGeometry(1200, 1200, 800, 600)
+        dlg.exec()
 
     def change_model(self, table_name):
         if table_name == 'waypoints':
@@ -510,13 +640,47 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.table.resizeColumnsToContents()
         return
+
     # SETUP UI #################################################################
     def setup_ui(self):
         """Assembles all the pieces for the Main Window"""
 
+        self.df_settings = pd.read_hdf(self.drsettings, key='settings', mode='r')
+        dir_str = self.df_settings.loc[0, 'file_directory']
+        file_str = self.df_settings.loc[0, 'file_onopen']
+        file_name = dir_str.strip() + file_str.strip()
+        if exists(file_name):
+            self.df_stations = pd.read_hdf(file_name, key='stations', mode='r')
+            self.df_waypoints = pd.read_hdf(file_name, key='waypoints', mode='r')
+            self.df_courses = pd.read_hdf(file_name, key='courses', mode='r')
+            self.df_coursepoints = pd.read_hdf(file_name, key='coursepoints', mode='r')
+            self.df_schedules = pd.read_hdf(file_name, key='schedules', mode='r')
+            self.df_itineraries = pd.read_hdf(file_name, key='itineraries', mode='r')
+            self.df_units = pd.read_hdf(file_name, key='units', mode='r')
+            self.df_squads = pd.read_hdf(file_name, key='squads', mode='r')
+            self.df_youths = pd.read_hdf(file_name, key='youths', mode='r')
+            self.df_adults = pd.read_hdf(file_name, key='adults', mode='r')
+            self.df_eveentoptions = pd.read_hdf(file_name, key='options', mode='r')
+            self.df_settings = pd.read_hdf(self.drsettings, key='settings', mode='r')
+            self.change_model('units')
+            map_name = self.df_eveentoptions.loc[0, 'map_open']
+            self.image = Image.open(str(map_name), 'r')
+            array_a = np.array([-85.77, -85.775, -85.777])
+            array_b = np.array([41.857, 41.859, 41.86])
+
+            ax = self.map_widget.figure.add_subplot(111)
+            ax.plot(array_a, array_b, 'o')
+            ax.set_xticks([-85.785, -85.780, -85.775, -85.770, -85.760])
+            ax.set_yticks([41.856, 41.858, 41.860, 41.862])
+            ax.imshow(self.image, extent=[-85.78590, -85.76597, 41.85403, 41.86310])
+            self.table.resizeColumnsToContents()
+            self.current_filename = file_name
+
+        else:
+            print("Nope.  Can't find it." + file_name)
+
         data2 = [['10', 'Alex'], ['12', 'Bob'], ['13', 'Clarke']]
         self.df2 = pd.DataFrame(data2, columns=['Age', 'Name'])
-
 
         if self.current_table == 'adults':
             print("Adults")
@@ -704,8 +868,11 @@ class MainWindow(QtWidgets.QMainWindow):
         maps_menu.addAction(import_map)
         import_map.triggered.connect(self.import_map_dialog)
 
-        settings_map =maps_menu.addAction('&Coordinates')
+        settings_map = maps_menu.addAction('&Coordinates')
+        settings_map.setShortcut('Ctrl+S')
+        settings_map.setStatusTip('Set location coordinates of map')
         maps_menu.addAction(settings_map)
+        settings_map.triggered.connect(self.map_settings)
 
         scores_menu = self.menu_bar.addMenu('Scoreboard')
         new_scores = scores_menu.addAction('&New')
@@ -723,8 +890,15 @@ class MainWindow(QtWidgets.QMainWindow):
         # #UTILITIES ##########################
         widget1 = Color('green')
         widget1.setFixedHeight(200)
+
+        # https://www.geeksforgeeks.org/pyqt5-qcalendarwidget-getting-selected-date/?ref=lbp
         widget2 = QtWidgets.QCalendarWidget()
-        widget2.setStyleSheet('font-size: 12pt; color: "black"; padding: 4px; ')
+        widget2.setStyleSheet('font-size: 12pt; color: "white"; padding: 4px; ')
+        widget2.setStyleSheet("QCalendarWidget  QAbstractItemView"
+                              "{"
+                              "color : black;"
+                              "}"
+                              )
 
         widget1.setGeometry(QtCore.QRect(0, 0, 200, 800))
         self.splitter_data.setGeometry(QtCore.QRect(5, 9, 600, 600))
@@ -741,16 +915,16 @@ class MainWindow(QtWidgets.QMainWindow):
         widget.setLayout(self.layout_main)
         self.setCentralWidget(widget)
 
-        atexit.register(goodbye, data=self.df2)
+        atexit.register(self.goodbye)
 
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
-    top = 500
-    left = 1350
+    top = 750
+    left = 1000
     width = 2000
     height = 1000
-    window.setGeometry(QtCore.QRect(top, left, width, height))
+    window.setGeometry(QtCore.QRect(left, top, width, height))
     window.show()
     app.exec_()

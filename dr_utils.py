@@ -17,7 +17,7 @@ def init_lists(self):
     self.stations_columns = ['Name', 'Description', 'Unit', 'PrimaryAdult', 'SecondaryAdult',
                              'Longitude', 'Latitude']
     self.settings_columns = ['file_onopen', 'file_directory']
-    self.event_options = ['map_open', 'map_tl', 'map_br']
+    self.event_options = ['map_open', 'north', 'south', 'east', 'west']
 
 
 def init_settings(self):
