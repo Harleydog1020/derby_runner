@@ -35,7 +35,7 @@ class PlotCanvas(FigureCanvas):
         description        .
     """
 
-    def __init__(self, parent=None, cnv_width=5, cnv_height=4, dpi=100):
+    def __init__(self, parent=None, cnv_width=6, cnv_height=4, dpi=100):
         fig = Figure(figsize=(cnv_width, cnv_height), dpi=dpi)
         FigureCanvas.__init__(self, fig)
         self.setParent(parent)
@@ -257,12 +257,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.df_settings: pd.DataFrame
         self.map_widget = PlotCanvas(self)
         self.image = Image.open(str('/home/brickyard314/PycharmProjects/drv/resources/woodlake.png'), 'r')
-        # default map Upper Left = -85.78590, 41.86310 Lower Right = -85.76597, 41.85403
-        array_a = np.array([-85.77, -85.775, -85.777])
-        array_b = np.array([41.857, 41.859, 41.86])
 
         ax = self.map_widget.figure.add_subplot(111)
-        ax.plot(array_a, array_b, 'o')
         ax.set_xticks([-85.785, -85.780, -85.775, -85.770, -85.760])
         ax.set_yticks([41.856, 41.858, 41.860, 41.862])
         ax.imshow(self.image, extent=[-85.78590, -85.76597, 41.85403, 41.86310])
@@ -323,7 +319,44 @@ class MainWindow(QtWidgets.QMainWindow):
         print('Goodbye')
         dlg.close()
 
-    # ###############################################################33#############
+    # ##############################################################################
+    def refresh_map(self):
+        # Need a button added to the tool bar that calls this function
+        file_name = self.df_eveentoptions.loc[0, 'map_open']
+        self.image = Image.open(file_name, 'r')
+        ax = self.map_widget.figure.add_subplot(111)
+        image_width = self.image.width
+        image_height = self.image.height
+
+        # Get map coordinates
+        north = self.df_eveentoptions.loc[0, 'north']
+        south = self.df_eveentoptions.loc[0, 'south']
+        east = self.df_eveentoptions.loc[0, 'east']
+        west = self.df_eveentoptions.loc[0, 'west']
+        dist_ns = north - south
+        dist_ew = east - west
+        ax.imshow(self.image, extent=[west, east, south, north])
+
+        # Calculate X & Y tick labels
+        x_ticks = [(west + (0.20 * dist_ew)), (west + (0.40 * dist_ew)), (west + (0.60 * dist_ew)),
+                   (west + (0.80 * dist_ew))]
+        y_ticks = [(south + (0.20 * dist_ns)), (south + (0.40 * dist_ns)), (south + (0.60 * dist_ns)),
+                   (south + (0.80 * dist_ns))]
+        ax.set_xticks(x_ticks)
+        ax.set_yticks(y_ticks)
+
+        # Get Station coordinates then plot
+        stations_x = np.array(self.df_stations['Longitude'])
+        stations_y = np.array(self.df_stations['Latitude'])
+        ax.plot(stations_x, stations_y, "o")
+
+        # Get Waypoint coordinates then plot
+        waypoints_x = np.array(self.df_waypoints['Longitude'])
+        waypoints_y = np.array(self.df_waypoints['Latitude'])
+        ax.plot(waypoints_x, waypoints_y, "*")
+
+        # Get coursepoints and plot course lines
+        return
 
     def show_data(self):
         """Used for development and testing"""
@@ -468,6 +501,22 @@ class MainWindow(QtWidgets.QMainWindow):
         self.df_squads = dru.init_squads(self)
         self.df_eveentoptions = dru.init_eventoptions(self)
 
+    def quick_save(self):
+        file_name = self.current_filename
+        self.df_stations.to_hdf(file_name, key='stations', mode='w')
+        self.df_waypoints.to_hdf(file_name, key='waypoints', mode='a')
+        self.df_courses.to_hdf(file_name, key='courses', mode='a')
+        self.df_coursepoints.to_hdf(file_name, key='coursepoints', mode='a')
+        self.df_units.to_hdf(file_name, key='units', mode='a')
+        self.df_squads.to_hdf(file_name, key='squads', mode='a')
+        self.df_itineraries.to_hdf(file_name, key='itineraries', mode='a')
+        self.df_schedules.to_hdf(file_name, key='schedules', mode='a')
+        self.df_youths.to_hdf(file_name, key='youths', mode='a')
+        self.df_adults.to_hdf(file_name, key='adults', mode='a')
+        self.df_eveentoptions.to_hdf(file_name, key='options', mode='a')
+        self.df_settings.to_hdf(self.drsettings, key='settings', mode='a')
+
+
     def save_file_dialog(self):
         x = QFileDialog()
         x.setGeometry(500, 500, 1000, 1500)
@@ -528,14 +577,13 @@ class MainWindow(QtWidgets.QMainWindow):
                                          filter="Image Files (*.png);;All Files (*)")
         if file_name:
             self.image = Image.open(file_name, 'r')
+            image_width = self.image.width
+            image_height = self.image.height
             self.df_eveentoptions.loc[0, 'map_open'] = file_name
-            array_a = np.array([-85.77, -85.775, -85.777])
-            array_b = np.array([41.857, 41.859, 41.86])
             ax = self.map_widget.figure.add_subplot(111)
-            ax.plot(array_a, array_b, 'o')
-            ax.set_xticks([-85.785, -85.780, -85.775, -85.770, -85.760])
-            ax.set_yticks([41.856, 41.858, 41.860, 41.862])
-            ax.imshow(self.image, extent=[-85.78590, -85.76597, 41.85403, 41.86310])
+            ax.set_xticks([0, 20, 40, 60, 80, 100])
+            ax.set_yticks([0, 20, 40, 60, 80, 100])
+            ax.imshow(self.image, extent=[0, 100, 0, 100])
         return
 
     def map_settings(self):
@@ -665,11 +713,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.change_model('units')
             map_name = self.df_eveentoptions.loc[0, 'map_open']
             self.image = Image.open(str(map_name), 'r')
-            array_a = np.array([-85.77, -85.775, -85.777])
-            array_b = np.array([41.857, 41.859, 41.86])
 
             ax = self.map_widget.figure.add_subplot(111)
-            ax.plot(array_a, array_b, 'o')
             ax.set_xticks([-85.785, -85.780, -85.775, -85.770, -85.760])
             ax.set_yticks([41.856, 41.858, 41.860, 41.862])
             ax.imshow(self.image, extent=[-85.78590, -85.76597, 41.85403, 41.86310])
@@ -729,6 +774,11 @@ class MainWindow(QtWidgets.QMainWindow):
             'font-size: 12pt; color: "black"; padding: 4px; margin: 2px; border: 1px solid #5CACEE;'
             'selection-background-color: #1B89CA; selection-color: #F0F0F0;')
 
+        button6_action = QAction(icon, "Refresh Map", self)
+        button6_action.setCheckable(False)
+        button6_action.triggered.connect(self.refresh_map)
+        self.data_tools.addAction(button6_action)
+
         # MENU BAR ############################################################
         self.menu_bar.setStyleSheet(
             'font-size: 12pt; color: "black"; padding: 4px; margin: 2px; border: 1px solid #5CACEE;'
@@ -764,8 +814,14 @@ class MainWindow(QtWidgets.QMainWindow):
         save_act = file_menu.addAction(save_icon, '&Save')
         save_act.setShortcut('Ctrl+S')
         save_act.setStatusTip('Save Current Event')
-        save_act.triggered.connect(self.save_file_dialog)
+        #save_act.triggered.connect(self.save_file_dialog)
         file_menu.addAction(save_act)
+
+        saveas_act = file_menu.addAction(save_icon, 'Save &As')
+        saveas_act.setShortcut('Ctrl+A')
+        saveas_act.setStatusTip('Save Current Event')
+        saveas_act.triggered.connect(self.save_file_dialog)
+        file_menu.addAction(saveas_act)
 
         export_act = file_menu.addAction('&Export')
         # export_act.triggered.connect(self.export_dialog)
