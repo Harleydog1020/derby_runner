@@ -2,6 +2,7 @@ import sys
 import numpy as np
 import pandas as pd
 import dr_utils as dru
+import points_editor as pe
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
@@ -12,6 +13,7 @@ from PyQt5.QtGui import QPalette, QColor, QIcon
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 from PIL import Image
 import atexit
 from os.path import exists
@@ -36,7 +38,9 @@ class PlotCanvas(FigureCanvas):
     """
 
     def __init__(self, parent=None, cnv_width=6, cnv_height=4, dpi=100):
-        fig = Figure(figsize=(cnv_width, cnv_height), dpi=dpi)
+        #fig = Figure(figsize=(cnv_width, cnv_height), dpi=dpi)
+        fig, ax = plt.subplots()
+
         FigureCanvas.__init__(self, fig)
         self.setParent(parent)
         FigureCanvas.setSizePolicy(self,
@@ -255,14 +259,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.df_youths: pd.DataFrame
         self.df_eveentoptions: pd.DataFrame
         self.df_settings: pd.DataFrame
-        self.map_widget = PlotCanvas(self)
+        #self.map_widget = PlotCanvas(self)
+
+        # self.points_editor = pe.PointEditor(self)
+
         self.image = Image.open(str('/home/brickyard314/PycharmProjects/drv/resources/woodlake.png'), 'r')
 
-        ax = self.map_widget.figure.add_subplot(111)
-        ax.set_xticks([-85.785, -85.780, -85.775, -85.770, -85.760])
-        ax.set_yticks([41.856, 41.858, 41.860, 41.862])
-        ax.imshow(self.image, extent=[-85.78590, -85.76597, 41.85403, 41.86310])
-
+        #ax = self.map_widget.figure.add_subplot(111)
+        #ax.set_xticks([-85.785, -85.780, -85.775, -85.770, -85.760])
+        #ax.set_yticks([41.856, 41.858, 41.860, 41.862])
+        #ax.imshow(self.image, extent=[-85.78590, -85.76597, 41.85403, 41.86310])
         dru.init_lists(self)
         self.new_event()
         self.drsettings = './resources/drsettings.h5'
@@ -714,10 +720,10 @@ class MainWindow(QtWidgets.QMainWindow):
             map_name = self.df_eveentoptions.loc[0, 'map_open']
             self.image = Image.open(str(map_name), 'r')
 
-            ax = self.map_widget.figure.add_subplot(111)
-            ax.set_xticks([-85.785, -85.780, -85.775, -85.770, -85.760])
-            ax.set_yticks([41.856, 41.858, 41.860, 41.862])
-            ax.imshow(self.image, extent=[-85.78590, -85.76597, 41.85403, 41.86310])
+            #ax = self.map_widget.figure.add_subplot(111)
+            #ax.set_xticks([-85.785, -85.780, -85.775, -85.770, -85.760])
+            #ax.set_yticks([41.856, 41.858, 41.860, 41.862])
+            #ax.imshow(self.image, extent=[-85.78590, -85.76597, 41.85403, 41.86310])
             self.table.resizeColumnsToContents()
             self.current_filename = file_name
 
@@ -944,8 +950,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.menu_bar.adjustSize()
         self.setMenuBar(self.menu_bar)
         # #UTILITIES ##########################
-        widget1 = Color('green')
-        widget1.setFixedHeight(200)
+        # widget1 = Color('green')
 
         # https://www.geeksforgeeks.org/pyqt5-qcalendarwidget-getting-selected-date/?ref=lbp
         widget2 = QtWidgets.QCalendarWidget()
@@ -956,23 +961,28 @@ class MainWindow(QtWidgets.QMainWindow):
                               "}"
                               )
 
-        widget1.setGeometry(QtCore.QRect(0, 0, 200, 800))
         self.splitter_data.setGeometry(QtCore.QRect(5, 9, 600, 600))
         self.data_tools.setGeometry(QtCore.QRect(0, 0, 800, 32))
         self.data_tools.setFixedHeight(55)
         self.data_tools.setIconSize(QSize(50, 50))
 
-        self.splitter_utils.addWidget(widget1)
+        dr = pe.master_editor()
+        self.splitter_utils.addWidget(dr)
+
         self.splitter_utils.addWidget(widget2)
-        self.splitter_utils.addWidget(self.map_widget)
+
+
+
         self.splitter_data.addWidget(self.data_tools)
         self.splitter_data.addWidget(self.table)
-        widget = QWidget()
+        widget = QWidget(flags=Qt.WindowFlags())
         widget.setLayout(self.layout_main)
         self.setCentralWidget(widget)
 
         atexit.register(self.goodbye)
 
+    def my_custom_fn(self, a="HELLLO!", b=5):
+        print(a, b)
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
