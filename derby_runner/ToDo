@@ -1,17 +1,5 @@
-TODO Add docustring elements like Version and Name which can be added to Window Title Help and Welcome Screens
-TODO Scoring Functionality
-TODO Reporting Functionality
-TODO Hide "ID" columns
-TODO Overlay dropdown combobox editing for "ID" links
-TODO Switch tableview with map view and back functionality
-TODO Set default "zoom" for map
-TODO Use map to set longitude and latitude via click and right mouse button
-TODO Show points and currently active course on map
 TODO Change table view(s) to be driven by tabs?
-TODO Settings user name, initials, default directory settings
 TODO Functionality to asses the size of the user's screen in order to set initial Geometry
-TODO Settings functionality - style sheet selection, individual colors, font size, font family, user defined columns;
-TODO Window tools store current layout / restore defaults for layout and stylesheet
 TODO Add status of changes, saved or not saved, to the status bar.
 TODO Facilitate column labels instead of column names which are "technical"
 TODO Install functionality from source for Windows, MacOS, Unix/Linix

@@ -1,23 +1,20 @@
+import atexit
 import sys
+from os.path import exists
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from PIL import Image
+from PyQt5 import QtGui, QtWidgets, QtCore
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import *
+from PyQt5.QtGui import QPalette, QColor
+from PyQt5.QtWidgets import *
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+
 import dr_utils as dru
 import points_editor as pe
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-from PyQt5 import QtGui, QtWidgets, QtCore
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QPalette, QColor, QIcon
-from PyQt5.QtWebEngineWidgets import QWebEngineView
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
-from PIL import Image
-import atexit
-from os.path import exists
-from pathlib import Path
 
 
 # ############################################################################
@@ -38,7 +35,7 @@ class PlotCanvas(FigureCanvas):
     """
 
     def __init__(self, parent=None, cnv_width=6, cnv_height=4, dpi=100):
-        #fig = Figure(figsize=(cnv_width, cnv_height), dpi=dpi)
+        # fig = Figure(figsize=(cnv_width, cnv_height), dpi=dpi)
         fig, ax = plt.subplots()
 
         FigureCanvas.__init__(self, fig)
@@ -246,6 +243,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
 
+        self.df_stations = None
         self.df_settings: pd.DataFrame
         self.df_adults: pd.DataFrame
         self.df_coursepoints: pd.DataFrame
@@ -259,16 +257,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.df_youths: pd.DataFrame
         self.df_eveentoptions: pd.DataFrame
         self.df_settings: pd.DataFrame
-        #self.map_widget = PlotCanvas(self)
+        # self.map_widget = PlotCanvas(self)
 
         # self.points_editor = pe.PointEditor(self)
 
         self.image = Image.open(str('/home/brickyard314/PycharmProjects/drv/resources/woodlake.png'), 'r')
 
-        #ax = self.map_widget.figure.add_subplot(111)
-        #ax.set_xticks([-85.785, -85.780, -85.775, -85.770, -85.760])
-        #ax.set_yticks([41.856, 41.858, 41.860, 41.862])
-        #ax.imshow(self.image, extent=[-85.78590, -85.76597, 41.85403, 41.86310])
+        # ax = self.map_widget.figure.add_subplot(111)
+        # ax.set_xticks([-85.785, -85.780, -85.775, -85.770, -85.760])
+        # ax.set_yticks([41.856, 41.858, 41.860, 41.862])
+        # ax.imshow(self.image, extent=[-85.78590, -85.76597, 41.85403, 41.86310])
         dru.init_lists(self)
         self.new_event()
         self.drsettings = './resources/drsettings.h5'
@@ -297,7 +295,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.layout_main.addWidget(self.splitter_main)
         self.setup_ui()
 
-
     def goodbye(self):
         """
         A simple function used to trap EXIT to prompt for save changes
@@ -305,7 +302,7 @@ class MainWindow(QtWidgets.QMainWindow):
         :return:
         """
 
-        dlg = QDialog(self)
+        dlg = QDialog()
         q_btn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
         dlg.button_box = QDialogButtonBox(q_btn)
         dlg.layout = QFormLayout()
@@ -385,12 +382,14 @@ class MainWindow(QtWidgets.QMainWindow):
         dlg.layout.addRow(message)
 
         file_str = self.df_settings.loc[0, 'file_onopen']
-        if len(file_str) == 0: file_str = ' '
+        if len(file_str) == 0: 
+            file_str = ' '
         dlg.file_name = QLineEdit(file_str)
         dlg.layout.addRow(QLabel("File to use at open: "), dlg.file_name)
 
         dir_str = self.df_settings.loc[0, 'file_directory']
-        if len(file_str) == 0: dir_str = ' '
+        if len(file_str) == 0: 
+            dir_str = ' '
         dlg.dir_name = QLineEdit(dir_str)
         dlg.layout.addRow(QLabel("Derby Runner directory: "), dlg.dir_name)
         dlg.button_box.accepted.connect(getinfo)
@@ -522,7 +521,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.df_eveentoptions.to_hdf(file_name, key='options', mode='a')
         self.df_settings.to_hdf(self.drsettings, key='settings', mode='a')
 
-
     def save_file_dialog(self):
         x = QFileDialog()
         x.setGeometry(500, 500, 1000, 1500)
@@ -594,7 +592,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def map_settings(self):
         def get_mapinfo():
-
             self.df_eveentoptions.loc[0, 'north'] = dlg.north.text()
             self.df_eveentoptions.loc[0, 'south'] = dlg.south.text()
             self.df_eveentoptions.loc[0, 'east'] = dlg.east.text()
@@ -720,10 +717,10 @@ class MainWindow(QtWidgets.QMainWindow):
             map_name = self.df_eveentoptions.loc[0, 'map_open']
             self.image = Image.open(str(map_name), 'r')
 
-            #ax = self.map_widget.figure.add_subplot(111)
-            #ax.set_xticks([-85.785, -85.780, -85.775, -85.770, -85.760])
-            #ax.set_yticks([41.856, 41.858, 41.860, 41.862])
-            #ax.imshow(self.image, extent=[-85.78590, -85.76597, 41.85403, 41.86310])
+            # ax = self.map_widget.figure.add_subplot(111)
+            # ax.set_xticks([-85.785, -85.780, -85.775, -85.770, -85.760])
+            # ax.set_yticks([41.856, 41.858, 41.860, 41.862])
+            # ax.imshow(self.image, extent=[-85.78590, -85.76597, 41.85403, 41.86310])
             self.table.resizeColumnsToContents()
             self.current_filename = file_name
 
@@ -771,6 +768,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.data_tools.addAction(button3_action)
         button4_action = QAction(delete_icon, "Delete Row", self)
         button4_action.setCheckable(False)
+        button4_action.triggered.connect(self.del_row)
         self.data_tools.addAction(button4_action)
         button5_action = QAction(insert_icon, "Insert New Row", self)
         button5_action.setCheckable(False)
@@ -820,7 +818,7 @@ class MainWindow(QtWidgets.QMainWindow):
         save_act = file_menu.addAction(save_icon, '&Save')
         save_act.setShortcut('Ctrl+S')
         save_act.setStatusTip('Save Current Event')
-        #save_act.triggered.connect(self.save_file_dialog)
+        # save_act.triggered.connect(self.save_file_dialog)
         file_menu.addAction(save_act)
 
         saveas_act = file_menu.addAction(save_icon, 'Save &As')
@@ -954,10 +952,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # https://www.geeksforgeeks.org/pyqt5-qcalendarwidget-getting-selected-date/?ref=lbp
         widget2 = QtWidgets.QCalendarWidget()
-        widget2.setStyleSheet('font-size: 12pt; color: "white"; padding: 4px; ')
+        widget2.setStyleSheet('font-size: 10pt; color: "green "; padding: 4px; ')
         widget2.setStyleSheet("QCalendarWidget  QAbstractItemView"
                               "{"
-                              "color : black;"
+                              "color : black; font-size: 11pt;"
                               "}"
                               )
 
@@ -966,12 +964,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.data_tools.setFixedHeight(55)
         self.data_tools.setIconSize(QSize(50, 50))
 
-        dr = pe.master_editor()
+        dr = pe.MasterEditor(self.df_eveentoptions, self.df_stations, self.df_waypoints)
         self.splitter_utils.addWidget(dr)
 
         self.splitter_utils.addWidget(widget2)
-
-
 
         self.splitter_data.addWidget(self.data_tools)
         self.splitter_data.addWidget(self.table)
@@ -983,6 +979,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def my_custom_fn(self, a="HELLLO!", b=5):
         print(a, b)
+
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
